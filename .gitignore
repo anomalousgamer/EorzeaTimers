@@ -1,0 +1,24 @@
+## Build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+
+## Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## JetBrains Rider
+.idea/
+*.sln.iml
+
+## Operating system files
+.DS_Store
+Thumbs.db
+
+## Local packages and generated artifacts
+packages/
+*.zip
