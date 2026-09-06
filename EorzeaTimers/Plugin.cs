@@ -10,11 +10,11 @@ namespace EorzeaTimers;
 
 public sealed class Plugin : IDalamudPlugin
 {
-    private const string CommandName = "/timers";
+    private const string CommandName = "/etimers";
     private static readonly TimeSpan ChangelogLoginDelay = TimeSpan.FromSeconds(3);
 
     internal static string CurrentVersion { get; } =
-        typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "0.1.0.0";
+        typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "Unknown";
 
     [PluginService]
     internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
@@ -42,19 +42,25 @@ public sealed class Plugin : IDalamudPlugin
 
     public Plugin()
     {
-        Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        Configuration =
+            PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
         mainWindow = new MainWindow(this);
         changelogWindow = new ChangelogWindow(this);
+
         windowSystem.AddWindow(mainWindow);
         windowSystem.AddWindow(changelogWindow);
 
         changelogPendingAfterLogin =
-            !string.Equals(Configuration.LastAcknowledgedVersion, CurrentVersion, StringComparison.Ordinal);
+            !string.Equals(
+                Configuration.LastAcknowledgedVersion,
+                CurrentVersion,
+                StringComparison.Ordinal);
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Open Eorzea Timers. Use /timers changes to view the changelog.",
+            HelpMessage =
+                "Open Eorzea Timers. Use /etimers changes to view the changelog.",
         });
 
         PluginInterface.UiBuilder.Draw += windowSystem.Draw;
@@ -62,7 +68,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi += OpenMainWindow;
         Framework.Update += OnFrameworkUpdate;
 
-        Log.Information("Eorzea Timers 0.1.0.0 loaded.");
+        Log.Information("Eorzea Timers {Version} loaded.", CurrentVersion);
     }
 
     public void Dispose()
@@ -78,7 +84,9 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnCommand(string command, string arguments)
     {
-        if (arguments.Trim().Equals("changes", StringComparison.OrdinalIgnoreCase))
+        if (arguments.Trim().Equals(
+                "changes",
+                StringComparison.OrdinalIgnoreCase))
         {
             OpenChangelogWindow();
             return;
@@ -112,7 +120,9 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
-        changelogEligibleAtUtc ??= DateTime.UtcNow + ChangelogLoginDelay;
+        changelogEligibleAtUtc ??=
+            DateTime.UtcNow + ChangelogLoginDelay;
+
         if (DateTime.UtcNow < changelogEligibleAtUtc.Value)
         {
             return;

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.1.0</Version>
+    <Version>0.1.2.0</Version>
     <Author>Anomaly</Author>
     <Name>Eorzea Timers</Name>
     <Punchline>Create and track personalized timers in FFXIV.</Punchline>
     <Description>A plugin created by someone learning how to make plugins. Not inteded for public use. Will be updated frequently.</Description>
-    <RepoUrl>https://github.com/YOUR_GITHUB_USERNAME/EorzeaTimers</RepoUrl>
+    <RepoUrl>https://github.com/anomalousgamer/EorzeaTimers</RepoUrl>
     <Tags>timer;countdown;reminder</Tags>
   </PropertyGroup>
 

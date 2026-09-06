@@ -8,6 +8,8 @@ internal static class Changelog
 
     internal static IReadOnlyList<string> Latest { get; } =
     [
+        "I fucked up so I just made it /etimers ok Aoife????? Jesus Christ\n\n",
+        "----------------------------------------------------",
         "Created Eorzea Timers from a clean project.",
         "Added the first version of the timer manager and editor GUI.",
         "Added one persistent manual countdown timer.",

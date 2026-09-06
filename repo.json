@@ -5,7 +5,7 @@
     "Punchline": "Create and track personalized timers in FFXIV.",
     "Description": "A plugin ",
     "InternalName": "EorzeaTimers",
-    "AssemblyVersion": "0.1.1.0",
+    "AssemblyVersion": "0.1.2.0",
     "RepoUrl": "https://github.com/anomalousgamer/EorzeaTimers",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 15,
@@ -19,7 +19,7 @@
     "DownloadCount": 0,
     "LastUpdate": "1788651240",
     "Changelog": "Stage 1 initial release.\n- Added one persistent manual countdown timer.\n- Added target date/time and duration input modes.\n- Added the timer manager and editor GUI.\n- Added the per-version changelog window.\n- Added /timers and /timers changes.",
-    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.1.1.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.1.1.0/latest.zip"
+    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.1.2.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.1.2.0/latest.zip"
   }
 ]
