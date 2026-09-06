@@ -85,7 +85,7 @@ public sealed class MainWindow : Window
         ImGui.Spacing();
 
         var footerHeight =
-            ImGui.GetFrameHeightWithSpacing() * 2f + 6f * ImGuiHelpers.GlobalScale;
+            ImGui.GetFrameHeightWithSpacing() * 3f + 6f * ImGuiHelpers.GlobalScale;
 
         using (var rows = ImRaii.Child(
                    "TimerRows",
@@ -133,6 +133,11 @@ public sealed class MainWindow : Window
             {
                 DeleteSelectedTimer();
             }
+        }
+
+        if (ImGui.Button("Overlay Settings", new Vector2(fullWidth, 0)))
+        {
+            plugin.OpenOverlaySettingsWindow();
         }
     }
 
@@ -201,7 +206,7 @@ public sealed class MainWindow : Window
 
         ImGui.Spacing();
         ImGui.Separator();
-        ImGui.TextDisabled("Stage 2 supports multiple persistent manual timers.");
+        ImGui.TextDisabled("Active timers can also be shown in the persistent overlay.");
 
         if (!string.IsNullOrWhiteSpace(validationMessage))
         {

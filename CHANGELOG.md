@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0.0 - Stage 3: In-Game Timer Overlay
+
+* Added a persistent compact overlay for active timers.
+* Added movable positioning with automatic position saving.
+* Added adjustable overlay scale, width, and background opacity.
+* Added lock, pin, and click-through controls.
+* Added optional hiding when no timers are active.
+* Added visibility controls for combat, duties, cutscenes, and hidden game UI.
+* Added `/etimers overlay` for opening overlay settings.
+* Added `/etimers toggle` for quickly showing or hiding the overlay.
+
 ## 0.2.0.0 - Stage 2: Full Manual Timers
 
 * Added support for multiple simultaneous manual timers.

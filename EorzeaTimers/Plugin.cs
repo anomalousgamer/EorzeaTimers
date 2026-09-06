@@ -31,11 +31,19 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     internal static IPlayerState PlayerState { get; private set; } = null!;
 
+    [PluginService]
+    internal static ICondition Condition { get; private set; } = null!;
+
+    [PluginService]
+    internal static IGameGui GameGui { get; private set; } = null!;
+
     internal Configuration Configuration { get; }
 
     private readonly WindowSystem windowSystem = new("EorzeaTimers");
     private readonly MainWindow mainWindow;
     private readonly ChangelogWindow changelogWindow;
+    private readonly TimerOverlayWindow overlayWindow;
+    private readonly OverlaySettingsWindow overlaySettingsWindow;
 
     private bool changelogPendingAfterLogin;
     private DateTime? changelogEligibleAtUtc;
@@ -52,9 +60,13 @@ public sealed class Plugin : IDalamudPlugin
 
         mainWindow = new MainWindow(this);
         changelogWindow = new ChangelogWindow(this);
+        overlayWindow = new TimerOverlayWindow(this);
+        overlaySettingsWindow = new OverlaySettingsWindow(this, overlayWindow);
 
         windowSystem.AddWindow(mainWindow);
         windowSystem.AddWindow(changelogWindow);
+        windowSystem.AddWindow(overlayWindow);
+        windowSystem.AddWindow(overlaySettingsWindow);
 
         changelogPendingAfterLogin =
             !string.Equals(
@@ -65,13 +77,15 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
             HelpMessage =
-                "Open Eorzea Timers. Use /etimers changes to view the changelog.",
+                "Open Eorzea Timers. Use /etimers overlay for overlay settings or /etimers changes for the changelog.",
         });
 
         PluginInterface.UiBuilder.Draw += windowSystem.Draw;
         PluginInterface.UiBuilder.OpenMainUi += OpenMainWindow;
         PluginInterface.UiBuilder.OpenConfigUi += OpenMainWindow;
         Framework.Update += OnFrameworkUpdate;
+
+        ApplyUiHideSettings();
 
         Log.Information("Eorzea Timers {Version} loaded.", CurrentVersion);
     }
@@ -83,18 +97,27 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi -= OpenMainWindow;
         Framework.Update -= OnFrameworkUpdate;
 
+        PluginInterface.UiBuilder.DisableUserUiHide = false;
+        PluginInterface.UiBuilder.DisableCutsceneUiHide = false;
+
         CommandManager.RemoveHandler(CommandName);
         windowSystem.RemoveAllWindows();
     }
 
     private void OnCommand(string command, string arguments)
     {
-        if (arguments.Trim().Equals(
-                "changes",
-                StringComparison.OrdinalIgnoreCase))
+        switch (arguments.Trim().ToLowerInvariant())
         {
-            OpenChangelogWindow();
-            return;
+            case "changes":
+                OpenChangelogWindow();
+                return;
+            case "overlay":
+                OpenOverlaySettingsWindow();
+                return;
+            case "toggle":
+                Configuration.OverlayEnabled = !Configuration.OverlayEnabled;
+                Configuration.Save();
+                return;
         }
 
         mainWindow.Toggle();
@@ -103,6 +126,19 @@ public sealed class Plugin : IDalamudPlugin
     private void OpenMainWindow()
     {
         mainWindow.IsOpen = true;
+    }
+
+    internal void OpenOverlaySettingsWindow()
+    {
+        overlaySettingsWindow.IsOpen = true;
+    }
+
+    internal void ApplyUiHideSettings()
+    {
+        PluginInterface.UiBuilder.DisableUserUiHide =
+            Configuration.OverlayShowWhenUiHidden;
+        PluginInterface.UiBuilder.DisableCutsceneUiHide =
+            Configuration.OverlayShowInCutscenes;
     }
 
     private void OpenChangelogWindow()

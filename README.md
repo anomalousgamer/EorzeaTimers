@@ -2,9 +2,20 @@
 
 A customizable timer plugin for FFXIV and Dalamud.
 
-## Version 0.2.0.0
+## Version 0.3.0.0
 
-Stage 2 provides:
+Stage 3 adds:
+
+* A persistent compact in-game overlay for active timers.
+* Movable positioning with automatic position saving.
+* Adjustable overlay scale, width, and background opacity.
+* Lock, pin, and click-through controls.
+* Optional hiding when no timers are active.
+* Visibility controls for combat, duties, cutscenes, and hidden game UI.
+* The `/etimers overlay` command for opening overlay settings.
+* The `/etimers toggle` command for quickly showing or hiding the overlay.
+
+Existing features include:
 
 * Multiple persistent manual countdown timers.
 * Add, edit, duplicate, delete, enable, and disable controls.
@@ -17,8 +28,8 @@ Stage 2 provides:
 * A per-version changelog shown three seconds after the character is fully loaded.
 * The `/etimers changes` command for reopening the changelog.
 
-Later releases will add the compact overlay, appearance customization, completion alerts, repeating timers, and game-linked timer sources.
+Later releases will add appearance customization, completion alerts, repeating timers, and game-linked timer sources.
 
-## Development build
+## Development Build
 
-Build the solution in Visual Studio and add the generated `EorzeaTimers.dll` as a Dalamud dev plugin.
+Build the solution in Visual Studio and add the generated `EorzeaTimers.dll` as a Dalamud development plugin.

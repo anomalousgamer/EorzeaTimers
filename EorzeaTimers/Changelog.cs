@@ -4,20 +4,16 @@ namespace EorzeaTimers;
 
 internal static class Changelog
 {
-    internal const string Title = "Stage 2 - Full Manual Timers";
+    internal const string Title = "Stage 3 - In-Game Timer Overlay";
 
     internal static IReadOnlyList<string> Latest { get; } =
     [
-        "v0.2.1.0 Hotfix",
-        "Fixed not clicking on timers.\n\n",
-        "--------------------------------------------------------\n\n",
-        "v0.2.0.0",
-        "Create and run multiple manual timers at the same time.",
-        "Added add, edit, duplicate, delete, enable, and disable controls.",
-        "Added optional notes for every timer.",
-        "Added stable unique timer IDs and independent countdown state.",
-        "Added selection highlighting to the timer list.",
-        "Existing Stage 1 timers migrate automatically.",
-        "Completed and deleted timers are handled safely.",
+        "Added a persistent compact overlay for active timers.",
+        "Added movable positioning with automatic position saving.",
+        "Added adjustable scale, width, and background opacity.",
+        "Added lock, pin, and click-through controls.",
+        "Added optional hiding when no timers are active.",
+        "Added visibility controls for combat, duties, cutscenes, and hidden game UI.",
+        "Added /etimers overlay and /etimers toggle commands.",
     ];
 }

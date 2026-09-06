@@ -8,7 +8,7 @@ namespace EorzeaTimers;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 2;
+    public int Version { get; set; } = 3;
 
     public List<TimerEntry> Timers { get; set; } = new();
 
@@ -16,6 +16,36 @@ public sealed class Configuration : IPluginConfiguration
     public TimerEntry? Timer { get; set; }
 
     public string LastAcknowledgedVersion { get; set; } = string.Empty;
+
+    public bool OverlayEnabled { get; set; } = true;
+
+    public bool OverlayLocked { get; set; }
+
+    public bool OverlayPinned { get; set; } = true;
+
+    public bool OverlayClickThrough { get; set; }
+
+    public bool OverlayHideWhenNoActiveTimers { get; set; } = true;
+
+    public bool OverlayShowInCombat { get; set; } = true;
+
+    public bool OverlayShowInDuty { get; set; } = true;
+
+    public bool OverlayShowInCutscenes { get; set; }
+
+    public bool OverlayShowWhenUiHidden { get; set; }
+
+    public float OverlayScale { get; set; } = 1f;
+
+    public float OverlayWidth { get; set; } = 280f;
+
+    public float OverlayOpacity { get; set; } = 0.9f;
+
+    public bool OverlayPositionSet { get; set; }
+
+    public float OverlayPositionX { get; set; }
+
+    public float OverlayPositionY { get; set; }
 
     internal bool MigrateToCurrentVersion()
     {
@@ -62,9 +92,39 @@ public sealed class Configuration : IPluginConfiguration
             }
         }
 
-        if (Version != 2)
+        var validScale = Math.Clamp(OverlayScale, 0.75f, 2f);
+        if (OverlayScale != validScale)
         {
-            Version = 2;
+            OverlayScale = validScale;
+            changed = true;
+        }
+
+        var validWidth = Math.Clamp(OverlayWidth, 200f, 500f);
+        if (OverlayWidth != validWidth)
+        {
+            OverlayWidth = validWidth;
+            changed = true;
+        }
+
+        var validOpacity = Math.Clamp(OverlayOpacity, 0.2f, 1f);
+        if (OverlayOpacity != validOpacity)
+        {
+            OverlayOpacity = validOpacity;
+            changed = true;
+        }
+
+        if (OverlayPositionSet
+            && (!float.IsFinite(OverlayPositionX) || !float.IsFinite(OverlayPositionY)))
+        {
+            OverlayPositionSet = false;
+            OverlayPositionX = 0f;
+            OverlayPositionY = 0f;
+            changed = true;
+        }
+
+        if (Version != 3)
+        {
+            Version = 3;
             changed = true;
         }
 
