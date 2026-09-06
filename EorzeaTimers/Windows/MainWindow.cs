@@ -140,27 +140,17 @@ public sealed class MainWindow : Window
     {
         var selected = !isCreatingNew && selectedTimerId == timer.Id;
         var rowHeight = 58f * ImGuiHelpers.GlobalScale;
+        var rowWidth = MathF.Max(1f, ImGui.GetContentRegionAvail().X);
+        var label = $"{timer.Name}\n{FormatRemaining(timer)}###Timer_{timer.Id}";
 
         if (ImGui.Selectable(
-                $"##Timer_{timer.Id}",
+                label,
                 selected,
                 ImGuiSelectableFlags.None,
-                new Vector2(-1, rowHeight)))
+                new Vector2(rowWidth, rowHeight)))
         {
             SelectTimer(timer.Id);
         }
-
-        var rowMin = ImGui.GetItemRectMin();
-        var drawList = ImGui.GetWindowDrawList();
-        var nameColor = ImGui.GetColorU32(timer.IsActive ? ImGuiCol.Text : ImGuiCol.TextDisabled);
-        var secondaryColor = ImGui.GetColorU32(ImGuiCol.TextDisabled);
-        var padding = new Vector2(12f, 8f) * ImGuiHelpers.GlobalScale;
-
-        drawList.AddText(rowMin + padding, nameColor, timer.Name);
-        drawList.AddText(
-            rowMin + padding + new Vector2(0, 24f * ImGuiHelpers.GlobalScale),
-            secondaryColor,
-            FormatRemaining(timer));
     }
 
     private void DrawEditor(Vector2 size)
