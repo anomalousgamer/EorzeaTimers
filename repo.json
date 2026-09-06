@@ -5,7 +5,7 @@
     "Punchline": "Create and track personalized timers in FFXIV.",
     "Description": "A plugin ",
     "InternalName": "EorzeaTimers",
-    "AssemblyVersion": "0.1.2.0",
+    "AssemblyVersion": "0.2.0.0",
     "RepoUrl": "https://github.com/anomalousgamer/EorzeaTimers",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 15,
@@ -17,9 +17,9 @@
     "IsHide": false,
     "IsTestingExclusive": false,
     "DownloadCount": 0,
-    "LastUpdate": "1788651240",
-    "Changelog": "Stage 1 initial release.\n- Added one persistent manual countdown timer.\n- Added target date/time and duration input modes.\n- Added the timer manager and editor GUI.\n- Added the per-version changelog window.\n- Added /timers and /timers changes.",
-    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.1.2.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.1.2.0/latest.zip"
+    "LastUpdate": "1788732078",
+    "Changelog": "Stage 2 - Full Manual Timers\n- Create and run multiple manual timers at the same time.\n- Added add, edit, duplicate, delete, enable, and disable controls.\n- Added optional notes and stable unique IDs.\n- Added independent countdown state and selection highlighting.\n- Existing Stage 1 timers migrate automatically.\n- Completed and deleted timers are handled safely.",
+    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.2.0.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.2.0.0/latest.zip"
   }
 ]

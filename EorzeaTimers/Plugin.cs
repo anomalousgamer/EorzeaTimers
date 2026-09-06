@@ -45,6 +45,11 @@ public sealed class Plugin : IDalamudPlugin
         Configuration =
             PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
+        if (Configuration.MigrateToCurrentVersion())
+        {
+            Configuration.Save();
+        }
+
         mainWindow = new MainWindow(this);
         changelogWindow = new ChangelogWindow(this);
 

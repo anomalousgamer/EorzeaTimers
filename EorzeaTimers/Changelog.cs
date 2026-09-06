@@ -4,17 +4,16 @@ namespace EorzeaTimers;
 
 internal static class Changelog
 {
-    internal const string Title = "Stage 1 - Foundation and One Timer";
+    internal const string Title = "Stage 2 - Full Manual Timers";
 
     internal static IReadOnlyList<string> Latest { get; } =
     [
-        "I fucked up so I just made it /etimers ok Aoife????? Jesus Christ\n\n",
-        "----------------------------------------------------",
-        "Created Eorzea Timers from a clean project.",
-        "Added the first version of the timer manager and editor GUI.",
-        "Added one persistent manual countdown timer.",
-        "Added target date/time and duration input modes.",
-        "Added edit, save, cancel, and delete controls.",
-        "Added the per-version changelog window.",
+        "Create and run multiple manual timers at the same time.",
+        "Added add, edit, duplicate, delete, enable, and disable controls.",
+        "Added optional notes for every timer.",
+        "Added stable unique timer IDs and independent countdown state.",
+        "Added selection highlighting to the timer list.",
+        "Existing Stage 1 timers migrate automatically.",
+        "Completed and deleted timers are handled safely.",
     ];
 }
