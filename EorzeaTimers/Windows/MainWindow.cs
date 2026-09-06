@@ -70,6 +70,13 @@ public sealed class MainWindow : Window
         DrawEditor(new Vector2(MathF.Max(340f, available.X - listWidth - spacing), available.Y));
     }
 
+    internal void OpenTimer(Guid timerId)
+    {
+        SelectTimer(timerId);
+        IsOpen = true;
+        BringToFront();
+    }
+
     private void DrawTimerList(Vector2 size)
     {
         using var child = ImRaii.Child("TimerList", size, true);

@@ -4,16 +4,13 @@ namespace EorzeaTimers;
 
 internal static class Changelog
 {
-    internal const string Title = "Stage 3 - In-Game Timer Overlay";
+    internal const string Title = "Hotfix 0.3.1.0 - Overlay Interaction";
 
     internal static IReadOnlyList<string> Latest { get; } =
     [
-        "Added a persistent compact overlay for active timers.",
-        "Added movable positioning with automatic position saving.",
-        "Added adjustable scale, width, and background opacity.",
-        "Added lock, pin, and click-through controls.",
-        "Added optional hiding when no timers are active.",
-        "Added visibility controls for combat, duties, cutscenes, and hidden game UI.",
-        "Added /etimers overlay and /etimers toggle commands.",
+        "Corrected the default pinned state so the overlay can be dragged immediately.",
+        "Existing Stage 3 configurations are automatically unpinned once.",
+        "Clicking an overlay timer now opens and selects that timer in the main window.",
+        "Clarified which overlay settings prevent dragging.",
     ];
 }

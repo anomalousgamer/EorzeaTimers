@@ -8,7 +8,7 @@ namespace EorzeaTimers;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 3;
+    public int Version { get; set; } = 4;
 
     public List<TimerEntry> Timers { get; set; } = new();
 
@@ -21,7 +21,7 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool OverlayLocked { get; set; }
 
-    public bool OverlayPinned { get; set; } = true;
+    public bool OverlayPinned { get; set; }
 
     public bool OverlayClickThrough { get; set; }
 
@@ -50,6 +50,14 @@ public sealed class Configuration : IPluginConfiguration
     internal bool MigrateToCurrentVersion()
     {
         var changed = false;
+
+        // Early Stage 3 builds defaulted the overlay to pinned, which prevented
+        // users from dragging it. Unpin it once when migrating that configuration.
+        if (Version == 3 && OverlayPinned)
+        {
+            OverlayPinned = false;
+            changed = true;
+        }
 
         if (Timers is null)
         {
@@ -122,9 +130,9 @@ public sealed class Configuration : IPluginConfiguration
             changed = true;
         }
 
-        if (Version != 3)
+        if (Version != 4)
         {
-            Version = 3;
+            Version = 4;
             changed = true;
         }
 

@@ -61,7 +61,7 @@ public sealed class OverlaySettingsWindow : Window
         }
 
         var pinned = configuration.OverlayPinned;
-        if (ImGui.Checkbox("Pin overlay", ref pinned))
+        if (ImGui.Checkbox("Pin overlay (prevents dragging)", ref pinned))
         {
             configuration.OverlayPinned = pinned;
             changed = true;
@@ -74,6 +74,8 @@ public sealed class OverlaySettingsWindow : Window
             changed = true;
         }
 
+        ImGui.TextDisabled(
+            "To move the overlay, turn off Lock, Pin, and Click-through, then drag its title bar.");
         ImGui.TextDisabled(
             "If click-through is enabled, reopen these settings with /etimers overlay.");
 

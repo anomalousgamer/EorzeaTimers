@@ -163,15 +163,32 @@ public sealed class TimerOverlayWindow : Window
     private void DrawTimerRow(TimerEntry timer)
     {
         var remainingText = FormatRemaining(timer);
+        var rowStart = ImGui.GetCursorPos();
+        var rowHeight = ImGui.GetTextLineHeight() + ImGui.GetStyle().FramePadding.Y * 2f;
 
+        if (ImGui.Selectable(
+                $"##OverlayTimer_{timer.Id}",
+                false,
+                ImGuiSelectableFlags.None,
+                new Vector2(-1f, rowHeight)))
+        {
+            plugin.OpenTimer(timer.Id);
+        }
+
+        var rowEnd = ImGui.GetCursorPos();
+        var padding = ImGui.GetStyle().FramePadding;
+        ImGui.SetCursorPos(rowStart + padding);
         ImGui.TextUnformatted(timer.Name);
-        ImGui.SameLine();
 
         var remainingWidth = ImGui.CalcTextSize(remainingText).X;
-        var currentX = ImGui.GetCursorPosX();
-        var rightAlignedX = currentX + ImGui.GetContentRegionAvail().X - remainingWidth;
-        ImGui.SetCursorPosX(MathF.Max(currentX, rightAlignedX));
+        var contentRight = ImGui.GetWindowContentRegionMax().X;
+        ImGui.SameLine();
+        ImGui.SetCursorPosX(MathF.Max(
+            ImGui.GetCursorPosX(),
+            contentRight - remainingWidth - padding.X));
         ImGui.TextUnformatted(remainingText);
+
+        ImGui.SetCursorPos(rowEnd);
     }
 
     private void SaveNativeWindowStateIfChanged()

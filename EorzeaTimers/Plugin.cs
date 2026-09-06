@@ -133,6 +133,11 @@ public sealed class Plugin : IDalamudPlugin
         overlaySettingsWindow.IsOpen = true;
     }
 
+    internal void OpenTimer(Guid timerId)
+    {
+        mainWindow.OpenTimer(timerId);
+    }
+
     internal void ApplyUiHideSettings()
     {
         PluginInterface.UiBuilder.DisableUserUiHide =
