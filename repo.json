@@ -19,7 +19,7 @@
     "DownloadCount": 0,
     "LastUpdate": "1788651240",
     "Changelog": "Stage 1 initial release.\n- Added one persistent manual countdown timer.\n- Added target date/time and duration input modes.\n- Added the timer manager and editor GUI.\n- Added the per-version changelog window.\n- Added /timers and /timers changes.",
-    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.1.0.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.1.0.0/latest.zip"
+    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.1.1.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.1.1.0/latest.zip"
   }
 ]
