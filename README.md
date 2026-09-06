@@ -11,6 +11,8 @@ Stage 1 provides:
 - Target date/time or relative duration input.
 - Edit, save, cancel, and delete controls.
 - The `/timers` command.
+- A per-version changelog shown three seconds after the character is fully loaded.
+- The `/timers changes` command for reopening the changelog.
 
 Later releases will add multiple timers, the compact overlay, customization,
 completion alerts, repeating timers, and game-linked timer sources.

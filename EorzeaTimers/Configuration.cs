@@ -11,6 +11,8 @@ public sealed class Configuration : IPluginConfiguration
 
     public TimerEntry? Timer { get; set; }
 
+    public string LastAcknowledgedVersion { get; set; } = string.Empty;
+
     public void Save()
     {
         Plugin.PluginInterface.SavePluginConfig(this);
