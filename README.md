@@ -2,14 +2,13 @@
 
 A customizable timer plugin for FFXIV and Dalamud.
 
-## Version 0.3.1.0
+## Version 0.3.2.0
 
-Hotfix 0.3.1.0:
+Hotfix 0.3.2.0:
 
-- Corrected the default pinned state so the overlay can be dragged immediately.
-- Existing Stage 3 configurations are automatically unpinned once.
-- Clicking an overlay timer now opens and selects that timer in the main window.
-- Clarified which overlay settings prevent dragging.
+- Corrected overlay position restoration so it is applied only once.
+- The overlay can now be dragged normally when Lock, Pin, and Click-through are disabled.
+- Moved overlay positions continue to save automatically.
 
 ## Stage 3 Features
 
@@ -21,6 +20,7 @@ Stage 3 adds:
 - Lock, pin, and click-through controls.
 - Optional hiding when no timers are active.
 - Visibility controls for combat, duties, cutscenes, and hidden game UI.
+- Clickable overlay timers that open and select the timer in the main window.
 - The `/etimers overlay` command for opening overlay settings.
 - The `/etimers toggle` command for quickly showing or hiding the overlay.
 

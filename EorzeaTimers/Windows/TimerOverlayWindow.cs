@@ -118,7 +118,10 @@ public sealed class TimerOverlayWindow : Window
         }
         else
         {
-            PositionCondition = ImGuiCond.None;
+            // Position must be null after the initial restore. Keeping a value
+            // here causes Dalamud to submit SetNextWindowPos every frame, which
+            // prevents the user from dragging the overlay.
+            Position = null;
         }
     }
 

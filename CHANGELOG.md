@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2.0 - Hotfix: Overlay Movement
+
+- Corrected overlay position restoration so it is applied only once instead of every frame.
+- Fixed the overlay being unable to move even when Lock, Pin, and Click-through were disabled.
+- Moved overlay positions continue to save automatically.
+
 ## 0.3.1.0 - Hotfix: Overlay Interaction
 
 - Corrected the default pinned state so the overlay can be dragged immediately.

@@ -5,7 +5,7 @@
     "Punchline": "Create and track personalized timers in FFXIV.",
     "Description": "A plugin ",
     "InternalName": "EorzeaTimers",
-    "AssemblyVersion": "0.3.1.0",
+    "AssemblyVersion": "0.3.2.0",
     "RepoUrl": "https://github.com/anomalousgamer/EorzeaTimers",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 15,
@@ -17,9 +17,9 @@
     "IsHide": false,
     "IsTestingExclusive": false,
     "DownloadCount": 0,
-    "LastUpdate": "1788735757",
-    "Changelog": "Hotfix 0.3.1.0 - Overlay Interaction\n- Corrected the default pinned state so the overlay can be dragged immediately.\n- Existing Stage 3 configurations are automatically unpinned once.\n- Clicking an overlay timer now opens and selects that timer in the main window.\n- Clarified which overlay settings prevent dragging.",
-    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.3.1.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.3.1.0/latest.zip"
+    "LastUpdate": "1788742382",
+    "Changelog": "Hotfix 0.3.2.0 - Overlay Movement\n- Corrected overlay position restoration so it is applied only once.\n- The overlay can now be dragged normally when Lock, Pin, and Click-through are disabled.\n- Moved overlay positions continue to save automatically.",
+    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.3.2.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.3.2.0/latest.zip"
   }
 ]
