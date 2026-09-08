@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.1.0 - Hotfix: Overlay Controls
+
+- Fixed the Click-through setting being immediately reset.
+- Removed the redundant Pin option so Lock now controls both movement and resizing.
+- Added Off, Persistent, and hold-to-show Key Bound overlay modes.
+- Added a selectable hold key with F10 as the default.
+- Added a Show in overlay option to every timer.
+- Existing timers automatically remain enabled for the overlay during migration.
+- Added a bottom-right width resize grip while keeping automatic overlay height.
+- Added Small, Medium, and Large width presets.
+- Kept continuous sliders for scale, width, and background opacity.
+- Added separate Reset Position and Reset Size & Style controls.
+- Added `/etimers overlay off`, `/etimers overlay persistent`, and `/etimers overlay key`.
+- Added `/etimers clickthrough`, `/etimers clickthrough on`, and `/etimers clickthrough off`.
+- Added `/etimers help` with commands, overlay modes, and interaction guidance.
+- Added chat confirmation for overlay mode and click-through commands.
+- Added a subtle pulsing border around completed timers in the overlay.
+
 ## 0.4.0.0 - Stage 4: Timer Appearance
 
 - Added selectable icons and colors for every timer.

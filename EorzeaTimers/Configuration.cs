@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Dalamud.Configuration;
+using Dalamud.Game.ClientState.Keys;
 using EorzeaTimers.Models;
 
 namespace EorzeaTimers;
@@ -8,7 +9,7 @@ namespace EorzeaTimers;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 5;
+    public int Version { get; set; } = 6;
 
     public List<TimerEntry> Timers { get; set; } = new();
 
@@ -17,7 +18,12 @@ public sealed class Configuration : IPluginConfiguration
 
     public string LastAcknowledgedVersion { get; set; } = string.Empty;
 
+    // Retained so configurations from versions before 0.4.1.0 can migrate.
     public bool OverlayEnabled { get; set; } = true;
+
+    public OverlayDisplayMode OverlayMode { get; set; } = OverlayDisplayMode.Persistent;
+
+    public VirtualKey OverlayHoldKey { get; set; } = VirtualKey.F10;
 
     public bool OverlayLocked { get; set; }
 
@@ -52,10 +58,27 @@ public sealed class Configuration : IPluginConfiguration
     internal bool MigrateToCurrentVersion()
     {
         var changed = false;
+        var migratingToVersionSix = Version < 6;
+
+        if (migratingToVersionSix)
+        {
+            OverlayMode = OverlayEnabled
+                ? OverlayDisplayMode.Persistent
+                : OverlayDisplayMode.Off;
+            changed = true;
+        }
 
         // Early Stage 3 builds defaulted the overlay to pinned, which prevented
         // users from dragging it. Unpin it once when migrating that configuration.
         if (Version == 3 && OverlayPinned)
+        {
+            OverlayPinned = false;
+            changed = true;
+        }
+
+        // Pin and Lock performed the same job for this overlay. Pin was removed
+        // in 0.4.1.0 so Lock now owns all position and resize protection.
+        if (OverlayPinned)
         {
             OverlayPinned = false;
             changed = true;
@@ -101,6 +124,12 @@ public sealed class Configuration : IPluginConfiguration
                 changed = true;
             }
 
+            if (migratingToVersionSix && !timer.ShowInOverlay)
+            {
+                timer.ShowInOverlay = true;
+                changed = true;
+            }
+
             if (!Enum.IsDefined(typeof(TimerIcon), timer.Icon))
             {
                 timer.Icon = TimerIcon.Clock;
@@ -118,6 +147,25 @@ public sealed class Configuration : IPluginConfiguration
                 timer.DisplayFormat = TimerDisplayFormat.Auto;
                 changed = true;
             }
+        }
+
+        if (!Enum.IsDefined(typeof(OverlayDisplayMode), OverlayMode))
+        {
+            OverlayMode = OverlayDisplayMode.Persistent;
+            changed = true;
+        }
+
+        var overlayEnabledForMode = OverlayMode != OverlayDisplayMode.Off;
+        if (OverlayEnabled != overlayEnabledForMode)
+        {
+            OverlayEnabled = overlayEnabledForMode;
+            changed = true;
+        }
+
+        if (!OverlayKeys.IsSupported(OverlayHoldKey))
+        {
+            OverlayHoldKey = VirtualKey.F10;
+            changed = true;
         }
 
         if (!Enum.IsDefined(typeof(OverlayRowStyle), OverlayRowStyle))
@@ -156,9 +204,9 @@ public sealed class Configuration : IPluginConfiguration
             changed = true;
         }
 
-        if (Version != 5)
+        if (Version != 6)
         {
-            Version = 5;
+            Version = 6;
             changed = true;
         }
 

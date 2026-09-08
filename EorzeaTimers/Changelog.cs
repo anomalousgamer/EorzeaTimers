@@ -4,15 +4,16 @@ namespace EorzeaTimers;
 
 internal static class Changelog
 {
-    internal const string Title = "Stage 4 - Timer Appearance";
+    internal const string Title = "Hotfix 0.4.1.0 - Overlay Controls";
 
     internal static IReadOnlyList<string> Latest { get; } =
     [
-        "Added selectable icons and colors for every timer.",
-        "Added automatic and user-selected countdown display formats.",
-        "Added compact and detailed overlay row styles.",
-        "Updated the timer manager and overlay with dark panels, gold accents, and blue selection highlighting.",
-        "Removed the overlay title bar. Click a timer to open it, or click and drag a timer row to move the overlay.",
-        "Existing timers are preserved and receive the default appearance automatically.",
+        "Fixed Click-through being immediately reset and removed the redundant Pin option.",
+        "Added Off, Persistent, and hold-to-show Key Bound overlay modes.",
+        "Added a selectable hold key with F10 as the default.",
+        "Added Show in overlay to each timer.",
+        "Added a bottom-right width resize grip, width presets, and reset controls.",
+        "Added /etimers overlay mode commands, click-through commands, and /etimers help.",
+        "Completed overlay timers now receive a subtle pulsing border.",
     ];
 }

@@ -5,7 +5,7 @@
     "Punchline": "Create and track personalized timers in FFXIV.",
     "Description": "Create persistent, personalized countdown timers with configurable icons, colors, formats, and an in-game overlay.",
     "InternalName": "EorzeaTimers",
-    "AssemblyVersion": "0.4.0.0",
+    "AssemblyVersion": "0.4.1.0",
     "RepoUrl": "https://github.com/anomalousgamer/EorzeaTimers",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 15,
@@ -17,9 +17,9 @@
     "IsHide": false,
     "IsTestingExclusive": false,
     "DownloadCount": 0,
-    "LastUpdate": "1788904890",
-    "Changelog": "Stage 4 - Timer Appearance\n- Added selectable icons and colors for every timer.\n- Added automatic and user-selected countdown display formats.\n- Added compact and detailed overlay row styles.\n- Updated the timer manager and overlay with dark panels, gold accents, and blue selection highlighting.\n- Removed the overlay title bar. Click a timer to open it, or click and drag a timer row to move the overlay.\n- Existing timers are preserved and receive the default appearance automatically.",
-    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.4.0.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.4.0.0/latest.zip"
+    "LastUpdate": "1788907651",
+    "Changelog": "Hotfix 0.4.1.0 - Overlay Controls\n- Fixed Click-through being immediately reset and removed the redundant Pin option.\n- Added Off, Persistent, and hold-to-show Key Bound overlay modes.\n- Added a selectable hold key with F10 as the default.\n- Added Show in overlay to each timer.\n- Added a bottom-right width resize grip, width presets, and reset controls.\n- Added /etimers overlay mode commands, click-through commands, and /etimers help.\n- Completed overlay timers now receive a subtle pulsing border.",
+    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.4.1.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.4.1.0/latest.zip"
   }
 ]

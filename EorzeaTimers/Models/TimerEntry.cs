@@ -15,6 +15,8 @@ public sealed class TimerEntry
 
     public bool IsActive { get; set; } = true;
 
+    public bool ShowInOverlay { get; set; } = true;
+
     public TimerIcon Icon { get; set; } = TimerIcon.Clock;
 
     public TimerColor Color { get; set; } = TimerColor.Default;

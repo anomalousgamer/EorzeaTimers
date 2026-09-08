@@ -28,6 +28,7 @@ public sealed class MainWindow : Window
     private string editDate = string.Empty;
     private string editTime = string.Empty;
     private bool editIsActive = true;
+    private bool editShowInOverlay = true;
     private TimerIcon editIcon = TimerIcon.Clock;
     private TimerColor editColor = TimerColor.Default;
     private TimerDisplayFormat editDisplayFormat = TimerDisplayFormat.Auto;
@@ -226,6 +227,14 @@ public sealed class MainWindow : Window
 
         ImGui.SameLine();
         ImGui.TextDisabled("Disabled timers remain saved and are shown as disabled.");
+
+        if (ImGui.Checkbox("Show in overlay", ref editShowInOverlay))
+        {
+            validationMessage = string.Empty;
+        }
+
+        ImGui.SameLine();
+        ImGui.TextDisabled("The timer keeps counting when hidden from the overlay.");
         ImGui.Spacing();
 
         if (ImGui.RadioButton(
@@ -509,6 +518,7 @@ public sealed class MainWindow : Window
         editDate = defaultTarget.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         editTime = defaultTarget.ToString("HH:mm", CultureInfo.InvariantCulture);
         editIsActive = true;
+        editShowInOverlay = true;
         editIcon = TimerIcon.Clock;
         editColor = TimerColor.Default;
         editDisplayFormat = TimerDisplayFormat.Auto;
@@ -543,6 +553,7 @@ public sealed class MainWindow : Window
         editDate = targetLocal.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         editTime = targetLocal.ToString("HH:mm", CultureInfo.InvariantCulture);
         editIsActive = timer.IsActive;
+        editShowInOverlay = timer.ShowInOverlay;
         editIcon = timer.Icon;
         editColor = timer.Color;
         editDisplayFormat = timer.DisplayFormat;
@@ -628,6 +639,7 @@ public sealed class MainWindow : Window
         timer.Notes = trimmedNotes;
         timer.EndUnixSeconds = endUnixSeconds;
         timer.IsActive = editIsActive;
+        timer.ShowInOverlay = editShowInOverlay;
         timer.Icon = editIcon;
         timer.Color = editColor;
         timer.DisplayFormat = editDisplayFormat;
@@ -695,6 +707,7 @@ public sealed class MainWindow : Window
             Notes = source.Notes,
             EndUnixSeconds = source.EndUnixSeconds,
             IsActive = source.IsActive,
+            ShowInOverlay = source.ShowInOverlay,
             Icon = source.Icon,
             Color = source.Color,
             DisplayFormat = source.DisplayFormat,

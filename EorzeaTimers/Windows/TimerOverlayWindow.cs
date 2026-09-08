@@ -17,6 +17,7 @@ public sealed class TimerOverlayWindow : Window
     private Vector2? pendingPosition;
     private int stablePositionFrames;
     private bool rowDragOccurred;
+    private bool resizeDirty;
     private bool overlayStylePushed;
 
     public TimerOverlayWindow(Plugin plugin)
@@ -37,13 +38,22 @@ public sealed class TimerOverlayWindow : Window
     {
         var configuration = plugin.Configuration;
 
-        if (!configuration.OverlayEnabled || !Plugin.PlayerState.IsLoaded)
+        if (!Plugin.PlayerState.IsLoaded
+            || configuration.OverlayMode == OverlayDisplayMode.Off)
+        {
+            return false;
+        }
+
+        if (configuration.OverlayMode == OverlayDisplayMode.KeyBound
+            && (!Plugin.KeyState.IsVirtualKeyValid(configuration.OverlayHoldKey)
+                || !Plugin.KeyState[configuration.OverlayHoldKey]))
         {
             return false;
         }
 
         if (configuration.OverlayHideWhenNoActiveTimers
-            && !configuration.Timers.Exists(timer => timer.IsActive))
+            && !configuration.Timers.Exists(
+                timer => timer.IsActive && timer.ShowInOverlay))
         {
             return false;
         }
@@ -93,14 +103,17 @@ public sealed class TimerOverlayWindow : Window
             | ImGuiWindowFlags.NoSavedSettings
             | ImGuiWindowFlags.NoTitleBar;
 
-        if (configuration.OverlayLocked)
+        if (configuration.OverlayLocked || configuration.OverlayClickThrough)
         {
             Flags |= ImGuiWindowFlags.NoMove;
         }
 
+        if (configuration.OverlayClickThrough)
+        {
+            Flags |= ImGuiWindowFlags.NoMouseInputs;
+        }
+
         BgAlpha = Math.Clamp(configuration.OverlayOpacity, 0.2f, 1f);
-        IsPinned = configuration.OverlayPinned;
-        IsClickthrough = configuration.OverlayClickThrough;
 
         var width = Math.Clamp(configuration.OverlayWidth, 200f, 500f);
         SizeConstraints = new WindowSizeConstraints
@@ -123,8 +136,7 @@ public sealed class TimerOverlayWindow : Window
         else
         {
             // Position must be null after the initial restore. Keeping a value
-            // here causes Dalamud to submit SetNextWindowPos every frame, which
-            // prevents the user from dragging the overlay.
+            // here would submit SetNextWindowPos every frame and block dragging.
             Position = null;
         }
 
@@ -144,7 +156,7 @@ public sealed class TimerOverlayWindow : Window
         var drewTimer = false;
         foreach (var timer in configuration.Timers)
         {
-            if (!timer.IsActive)
+            if (!timer.IsActive || !timer.ShowInOverlay)
             {
                 continue;
             }
@@ -163,12 +175,13 @@ public sealed class TimerOverlayWindow : Window
             DrawEmptyRow();
         }
 
+        DrawResizeGrip();
+
         if (!ImGui.IsMouseDown(ImGuiMouseButton.Left))
         {
             rowDragOccurred = false;
         }
 
-        SaveNativeWindowStateIfChanged();
         TrackPosition();
     }
 
@@ -212,19 +225,33 @@ public sealed class TimerOverlayWindow : Window
         HandleRowInteraction(timer.Id);
 
         var rowEnd = ImGui.GetCursorPos();
+        var rowMinimum = ImGui.GetItemRectMin();
+        var rowMaximum = ImGui.GetItemRectMax();
+        var drawList = ImGui.GetWindowDrawList();
         var iconColor = TimerAppearance.GetColor(timer.Color);
         var horizontalPadding = 8f * globalScale;
         var iconWidth = 24f * globalScale;
 
         if (ImGui.IsItemHovered() && !configuration.OverlayClickThrough)
         {
-            var rowMinimum = ImGui.GetItemRectMin();
-            var rowMaximum = ImGui.GetItemRectMax();
-            ImGui.GetWindowDrawList().AddRectFilled(
+            drawList.AddRectFilled(
                 rowMinimum,
                 rowMaximum,
                 ImGui.GetColorU32(new Vector4(0.12f, 0.28f, 0.50f, 0.42f)),
                 4f * globalScale);
+        }
+
+        if (timer.EndUnixSeconds <= DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+        {
+            var pulse = (MathF.Sin((float)ImGui.GetTime() * 2.5f) + 1f) * 0.5f;
+            var pulseColor = new Vector4(1f, 0.63f, 0.22f, 0.24f + pulse * 0.38f);
+            drawList.AddRect(
+                rowMinimum,
+                rowMaximum,
+                ImGui.GetColorU32(pulseColor),
+                4f * globalScale,
+                ImDrawFlags.None,
+                2f * globalScale);
         }
 
         ImGui.SetCursorPos(rowStart + new Vector2(horizontalPadding, padding.Y));
@@ -276,7 +303,7 @@ public sealed class TimerOverlayWindow : Window
 
         var rowEnd = ImGui.GetCursorPos();
         ImGui.SetCursorPos(rowStart + padding);
-        ImGui.TextDisabled("No active timers.");
+        ImGui.TextDisabled("No active overlay timers.");
         ImGui.SetCursorPos(rowEnd);
     }
 
@@ -284,10 +311,7 @@ public sealed class TimerOverlayWindow : Window
     {
         var configuration = plugin.Configuration;
         var canInteract = !configuration.OverlayClickThrough;
-        var canMove =
-            canInteract
-            && !configuration.OverlayLocked
-            && !configuration.OverlayPinned;
+        var canMove = canInteract && !configuration.OverlayLocked;
 
         if (canMove
             && ImGui.IsItemActive()
@@ -307,27 +331,68 @@ public sealed class TimerOverlayWindow : Window
         }
     }
 
-    private void SaveNativeWindowStateIfChanged()
+    private void DrawResizeGrip()
     {
         var configuration = plugin.Configuration;
-        var changed = false;
+        var globalScale = ImGuiHelpers.GlobalScale;
+        var gripSize = 16f * globalScale;
+        var cursorY = ImGui.GetCursorPosY();
+        var contentRight = ImGui.GetWindowContentRegionMax().X;
 
-        if (configuration.OverlayPinned != IsPinned)
+        ImGui.SetCursorPos(new Vector2(contentRight - gripSize, cursorY));
+        ImGui.InvisibleButton("##OverlayResizeGrip", new Vector2(gripSize, gripSize));
+
+        var canResize =
+            !configuration.OverlayLocked
+            && !configuration.OverlayClickThrough;
+
+        if (canResize && ImGui.IsItemHovered())
         {
-            configuration.OverlayPinned = IsPinned;
-            changed = true;
+            ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEw);
+            ImGui.SetTooltip("Drag to resize overlay width");
         }
 
-        if (configuration.OverlayClickThrough != IsClickthrough)
+        if (canResize
+            && ImGui.IsItemActive()
+            && ImGui.IsMouseDragging(ImGuiMouseButton.Left))
         {
-            configuration.OverlayClickThrough = IsClickthrough;
-            changed = true;
+            var widthChange = ImGui.GetIO().MouseDelta.X / globalScale;
+            var newWidth = Math.Clamp(configuration.OverlayWidth + widthChange, 200f, 500f);
+            if (MathF.Abs(newWidth - configuration.OverlayWidth) > 0.01f)
+            {
+                configuration.OverlayWidth = newWidth;
+                resizeDirty = true;
+            }
         }
 
-        if (changed)
+        if (resizeDirty && ImGui.IsItemDeactivated())
         {
             configuration.Save();
+            resizeDirty = false;
         }
+
+        var gripMaximum = ImGui.GetItemRectMax();
+        var gripColor = canResize
+            ? new Vector4(0.92f, 0.75f, 0.39f, 0.90f)
+            : new Vector4(0.45f, 0.45f, 0.45f, 0.55f);
+        var color = ImGui.GetColorU32(gripColor);
+        var drawList = ImGui.GetWindowDrawList();
+
+        drawList.AddLine(
+            gripMaximum - new Vector2(11f * globalScale, 2f * globalScale),
+            gripMaximum - new Vector2(2f * globalScale, 11f * globalScale),
+            color,
+            1.5f * globalScale);
+        drawList.AddLine(
+            gripMaximum - new Vector2(7f * globalScale, 2f * globalScale),
+            gripMaximum - new Vector2(2f * globalScale, 7f * globalScale),
+            color,
+            1.5f * globalScale);
+        drawList.AddLine(
+            gripMaximum - new Vector2(3f * globalScale, 2f * globalScale),
+            gripMaximum - new Vector2(2f * globalScale, 3f * globalScale),
+            color,
+            1.5f * globalScale);
     }
 
     private void TrackPosition()
@@ -383,5 +448,4 @@ public sealed class TimerOverlayWindow : Window
             MathF.Max(20f, displaySize.X - width - 40f),
             60f);
     }
-
 }
