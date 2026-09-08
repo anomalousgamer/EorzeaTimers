@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.2.0 - Hotfix: Equal Overlay Rows
+
+- Fixed the resize grip making the bottom timer appear taller than the others.
+- The resize grip now floats inside the existing bottom-right corner without adding layout height.
+- The grip remains subtle until hovered and is still easy to drag.
+- Added a temporary 0.4.2.0-only 4/20 joke image to the main plugin window.
+
 ## 0.4.1.0 - Hotfix: Overlay Controls
 
 - Fixed the Click-through setting being immediately reset.

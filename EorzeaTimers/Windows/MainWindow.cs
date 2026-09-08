@@ -11,6 +11,9 @@ namespace EorzeaTimers.Windows;
 
 public sealed class MainWindow : Window
 {
+    private const string FourTwentyLeafResource =
+        "EorzeaTimers.Assets.FourTwentyLeaf.png";
+
     private enum TimerInputMode
     {
         TargetDateTime,
@@ -63,6 +66,8 @@ public sealed class MainWindow : Window
 
     public override void Draw()
     {
+        DrawFourTwentyJoke();
+
         var available = ImGui.GetContentRegionAvail();
         var spacing = ImGui.GetStyle().ItemSpacing.X;
         var listWidth = MathF.Max(260f * ImGuiHelpers.GlobalScale, available.X * 0.37f);
@@ -72,6 +77,33 @@ public sealed class MainWindow : Window
         ImGui.SameLine(0, spacing);
 
         DrawEditor(new Vector2(MathF.Max(340f, available.X - listWidth - spacing), available.Y));
+    }
+
+    private static void DrawFourTwentyJoke()
+    {
+        // Temporary v0.4.2.0 joke. Remove this method, its Draw() call, the
+        // embedded resource, and the TextureProvider service next release.
+        var texture = Plugin.TextureProvider
+            .GetFromManifestResource(typeof(Plugin).Assembly, FourTwentyLeafResource)
+            .GetWrapOrDefault();
+
+        if (texture is null)
+        {
+            return;
+        }
+
+        var imageSize = 56f * ImGuiHelpers.GlobalScale;
+        var availableWidth = ImGui.GetContentRegionAvail().X;
+        var startX = ImGui.GetCursorPosX();
+        ImGui.SetCursorPosX(startX + MathF.Max(0f, (availableWidth - imageSize) * 0.5f));
+        ImGui.Image(texture.Handle, new Vector2(imageSize, imageSize));
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip("Eorzea Timers 0.4.2.0 — nice.");
+        }
+
+        ImGui.Spacing();
     }
 
     internal void OpenTimer(Guid timerId)

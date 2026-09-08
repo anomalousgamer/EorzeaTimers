@@ -17,6 +17,7 @@ public sealed class TimerOverlayWindow : Window
     private Vector2? pendingPosition;
     private int stablePositionFrames;
     private bool rowDragOccurred;
+    private bool resizeDragging;
     private bool resizeDirty;
     private bool overlayStylePushed;
 
@@ -310,7 +311,11 @@ public sealed class TimerOverlayWindow : Window
     private void HandleRowInteraction(Guid? timerId)
     {
         var configuration = plugin.Configuration;
-        var canInteract = !configuration.OverlayClickThrough;
+        var mouseOverResizeGrip = IsMouseOverResizeGrip();
+        var canInteract =
+            !configuration.OverlayClickThrough
+            && !resizeDragging
+            && !mouseOverResizeGrip;
         var canMove = canInteract && !configuration.OverlayLocked;
 
         if (canMove
@@ -335,26 +340,23 @@ public sealed class TimerOverlayWindow : Window
     {
         var configuration = plugin.Configuration;
         var globalScale = ImGuiHelpers.GlobalScale;
-        var gripSize = 16f * globalScale;
-        var cursorY = ImGui.GetCursorPosY();
-        var contentRight = ImGui.GetWindowContentRegionMax().X;
-
-        ImGui.SetCursorPos(new Vector2(contentRight - gripSize, cursorY));
-        ImGui.InvisibleButton("##OverlayResizeGrip", new Vector2(gripSize, gripSize));
-
         var canResize =
             !configuration.OverlayLocked
             && !configuration.OverlayClickThrough;
+        var hovered = canResize && IsMouseOverResizeGrip() && ImGui.IsWindowHovered();
 
-        if (canResize && ImGui.IsItemHovered())
+        if (hovered || resizeDragging)
         {
             ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEw);
-            ImGui.SetTooltip("Drag to resize overlay width");
         }
 
-        if (canResize
-            && ImGui.IsItemActive()
-            && ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+        if (hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        {
+            resizeDragging = true;
+            rowDragOccurred = true;
+        }
+
+        if (resizeDragging && canResize && ImGui.IsMouseDown(ImGuiMouseButton.Left))
         {
             var widthChange = ImGui.GetIO().MouseDelta.X / globalScale;
             var newWidth = Math.Clamp(configuration.OverlayWidth + widthChange, 200f, 500f);
@@ -365,15 +367,22 @@ public sealed class TimerOverlayWindow : Window
             }
         }
 
-        if (resizeDirty && ImGui.IsItemDeactivated())
+        if (resizeDragging && !ImGui.IsMouseDown(ImGuiMouseButton.Left))
         {
-            configuration.Save();
+            if (resizeDirty)
+            {
+                configuration.Save();
+            }
+
+            resizeDragging = false;
             resizeDirty = false;
         }
 
-        var gripMaximum = ImGui.GetItemRectMax();
+        var (_, gripMaximum) = GetResizeGripBounds();
         var gripColor = canResize
-            ? new Vector4(0.92f, 0.75f, 0.39f, 0.90f)
+            ? hovered || resizeDragging
+                ? new Vector4(0.98f, 0.82f, 0.46f, 0.95f)
+                : new Vector4(0.92f, 0.75f, 0.39f, 0.35f)
             : new Vector4(0.45f, 0.45f, 0.45f, 0.55f);
         var color = ImGui.GetColorU32(gripColor);
         var drawList = ImGui.GetWindowDrawList();
@@ -393,6 +402,33 @@ public sealed class TimerOverlayWindow : Window
             gripMaximum - new Vector2(2f * globalScale, 3f * globalScale),
             color,
             1.5f * globalScale);
+
+        if (hovered)
+        {
+            ImGui.SetTooltip("Drag to resize overlay width");
+        }
+    }
+
+    private static bool IsMouseOverResizeGrip()
+    {
+        var (minimum, maximum) = GetResizeGripBounds();
+        var mousePosition = ImGui.GetIO().MousePos;
+        return mousePosition.X >= minimum.X
+            && mousePosition.X <= maximum.X
+            && mousePosition.Y >= minimum.Y
+            && mousePosition.Y <= maximum.Y;
+    }
+
+    private static (Vector2 Minimum, Vector2 Maximum) GetResizeGripBounds()
+    {
+        var globalScale = ImGuiHelpers.GlobalScale;
+        var gripSize = 18f * globalScale;
+        var maximum =
+            ImGui.GetWindowPos()
+            + ImGui.GetWindowSize()
+            - new Vector2(2f * globalScale, 2f * globalScale);
+
+        return (maximum - new Vector2(gripSize, gripSize), maximum);
     }
 
     private void TrackPosition()

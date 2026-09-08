@@ -45,6 +45,9 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     internal static IChatGui ChatGui { get; private set; } = null!;
 
+    [PluginService]
+    internal static ITextureProvider TextureProvider { get; private set; } = null!;
+
     internal Configuration Configuration { get; }
 
     private readonly WindowSystem windowSystem = new("EorzeaTimers");

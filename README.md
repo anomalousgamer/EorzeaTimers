@@ -2,18 +2,14 @@
 
 A customizable timer plugin for FFXIV and Dalamud.
 
-## Version 0.4.1.0
+## Version 0.4.2.0
 
-Hotfix 0.4.1.0 improves overlay modes, controls, resizing, and timer visibility.
+Hotfix 0.4.2.0 corrects the visual spacing caused by the overlay resize grip.
 
-- Choose Off, Persistent, or Key Bound overlay modes.
-- In Key Bound mode, hold the selected key to show the overlay and release it to hide it.
-- Choose whether each timer appears in the overlay.
-- Use working click-through behavior with commands for enabling and disabling it.
-- Resize the overlay from its bottom-right grip or use the width slider and presets.
-- Lock both the overlay position and size with one clear setting.
-- See completed timers with a subtle pulsing border.
-- Use `/etimers help` for the complete in-game guide.
+- Every overlay timer row now has matching visual height.
+- The resize grip floats inside the existing bottom-right corner instead of adding extra space below the final timer.
+- The grip stays subtle until hovered and remains draggable.
+- A temporary 0.4.2.0-only 4/20 joke image appears in the main plugin window.
 
 ## Current Features
 
@@ -32,7 +28,7 @@ Hotfix 0.4.1.0 improves overlay modes, controls, resizing, and timer visibility.
 - Titleless click-or-drag overlay interaction.
 - Off, Persistent, and hold-to-show Key Bound overlay modes.
 - Per-timer Show in overlay controls.
-- A bottom-right overlay width resize grip and width presets.
+- A floating bottom-right overlay width resize grip and width presets.
 - A subtle pulsing border around completed overlay timers.
 - Automatic migration of timers created in earlier releases.
 - Safe handling of completed and deleted timers.
