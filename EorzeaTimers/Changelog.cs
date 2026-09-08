@@ -4,12 +4,15 @@ namespace EorzeaTimers;
 
 internal static class Changelog
 {
-    internal const string Title = "Hotfix 0.3.2.0 - Overlay Movement";
+    internal const string Title = "Stage 4 - Timer Appearance";
 
     internal static IReadOnlyList<string> Latest { get; } =
     [
-        "Corrected overlay position restoration so it is applied only once.",
-        "The overlay can now be dragged normally when Lock, Pin, and Click-through are disabled.",
-        "Moved overlay positions continue to save automatically.",
+        "Added selectable icons and colors for every timer.",
+        "Added automatic and user-selected countdown display formats.",
+        "Added compact and detailed overlay row styles.",
+        "Updated the timer manager and overlay with dark panels, gold accents, and blue selection highlighting.",
+        "Removed the overlay title bar. Click a timer to open it, or click and drag a timer row to move the overlay.",
+        "Existing timers are preserved and receive the default appearance automatically.",
     ];
 }

@@ -3,9 +3,9 @@
     "Author": "Anomaly",
     "Name": "Eorzea Timers",
     "Punchline": "Create and track personalized timers in FFXIV.",
-    "Description": "A plugin ",
+    "Description": "Create persistent, personalized countdown timers with configurable icons, colors, formats, and an in-game overlay.",
     "InternalName": "EorzeaTimers",
-    "AssemblyVersion": "0.3.2.0",
+    "AssemblyVersion": "0.4.0.0",
     "RepoUrl": "https://github.com/anomalousgamer/EorzeaTimers",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 15,
@@ -17,9 +17,9 @@
     "IsHide": false,
     "IsTestingExclusive": false,
     "DownloadCount": 0,
-    "LastUpdate": "1788742382",
-    "Changelog": "Hotfix 0.3.2.0 - Overlay Movement\n- Corrected overlay position restoration so it is applied only once.\n- The overlay can now be dragged normally when Lock, Pin, and Click-through are disabled.\n- Moved overlay positions continue to save automatically.",
-    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.3.2.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.3.2.0/latest.zip"
+    "LastUpdate": "1788904890",
+    "Changelog": "Stage 4 - Timer Appearance\n- Added selectable icons and colors for every timer.\n- Added automatic and user-selected countdown display formats.\n- Added compact and detailed overlay row styles.\n- Updated the timer manager and overlay with dark panels, gold accents, and blue selection highlighting.\n- Removed the overlay title bar. Click a timer to open it, or click and drag a timer row to move the overlay.\n- Existing timers are preserved and receive the default appearance automatically.",
+    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.4.0.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.4.0.0/latest.zip"
   }
 ]

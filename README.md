@@ -2,43 +2,42 @@
 
 A customizable timer plugin for FFXIV and Dalamud.
 
-## Version 0.3.2.0
+## Version 0.4.0.0
 
-Hotfix 0.3.2.0:
+Stage 4 adds timer appearance customization and a cleaner interactive overlay.
 
-- Corrected overlay position restoration so it is applied only once.
-- The overlay can now be dragged normally when Lock, Pin, and Click-through are disabled.
-- Moved overlay positions continue to save automatically.
+- Choose an icon and color for every timer.
+- Choose automatic, days-and-clock, total-hours, total-minutes, words, or target-date display formats.
+- Switch the overlay between compact and detailed rows.
+- Use a consistent dark panel style with gold accents and blue selection highlighting.
+- Use a titleless overlay: click a timer to open it, or click and drag a timer row to move the whole overlay.
+- Preserve existing timers automatically with default Stage 4 appearance values.
 
-## Stage 3 Features
+## Current Features
 
-Stage 3 adds:
-
-- A persistent compact in-game overlay for active timers.
+- Multiple persistent manual countdown timers.
+- Add, edit, duplicate, delete, enable, and disable controls.
+- Timer names, optional notes, stable unique IDs, icons, colors, and display formats.
+- Target date/time or relative duration input.
+- Automatic and user-selected countdown formats.
+- A persistent in-game overlay for active timers.
+- Compact and detailed overlay row styles.
 - Movable positioning with automatic position saving.
 - Adjustable overlay scale, width, and background opacity.
 - Lock, pin, and click-through controls.
 - Optional hiding when no timers are active.
 - Visibility controls for combat, duties, cutscenes, and hidden game UI.
-- Clickable overlay timers that open and select the timer in the main window.
+- Titleless click-or-drag overlay interaction.
+- Automatic migration of timers created in earlier releases.
+- Safe handling of completed and deleted timers.
+- A per-version changelog shown three seconds after the character is fully loaded.
+- The `/etimers` command for the timer manager.
 - The `/etimers overlay` command for opening overlay settings.
 - The `/etimers toggle` command for quickly showing or hiding the overlay.
-
-Existing features include:
-
-- Multiple persistent manual countdown timers.
-- Add, edit, duplicate, delete, enable, and disable controls.
-- Timer names, optional notes, and stable unique IDs.
-- Target date/time or relative duration input.
-- Independent countdown state and selection highlighting.
-- Automatic migration of an existing Stage 1 timer.
-- Safe handling of completed and deleted timers.
-- The `/etimers` command.
-- A per-version changelog shown three seconds after the character is fully loaded.
 - The `/etimers changes` command for reopening the changelog.
 
-Later releases will add appearance customization, completion alerts,
-repeating timers, and game-linked timer sources.
+Later releases will add completion alerts, repeating timers, and game-linked
+timer sources.
 
 ## Development build
 

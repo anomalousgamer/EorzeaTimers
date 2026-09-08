@@ -8,7 +8,7 @@ namespace EorzeaTimers;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 4;
+    public int Version { get; set; } = 5;
 
     public List<TimerEntry> Timers { get; set; } = new();
 
@@ -40,6 +40,8 @@ public sealed class Configuration : IPluginConfiguration
     public float OverlayWidth { get; set; } = 280f;
 
     public float OverlayOpacity { get; set; } = 0.9f;
+
+    public OverlayRowStyle OverlayRowStyle { get; set; } = OverlayRowStyle.Compact;
 
     public bool OverlayPositionSet { get; set; }
 
@@ -98,6 +100,30 @@ public sealed class Configuration : IPluginConfiguration
                 timer.Notes = string.Empty;
                 changed = true;
             }
+
+            if (!Enum.IsDefined(typeof(TimerIcon), timer.Icon))
+            {
+                timer.Icon = TimerIcon.Clock;
+                changed = true;
+            }
+
+            if (!Enum.IsDefined(typeof(TimerColor), timer.Color))
+            {
+                timer.Color = TimerColor.Default;
+                changed = true;
+            }
+
+            if (!Enum.IsDefined(typeof(TimerDisplayFormat), timer.DisplayFormat))
+            {
+                timer.DisplayFormat = TimerDisplayFormat.Auto;
+                changed = true;
+            }
+        }
+
+        if (!Enum.IsDefined(typeof(OverlayRowStyle), OverlayRowStyle))
+        {
+            OverlayRowStyle = OverlayRowStyle.Compact;
+            changed = true;
         }
 
         var validScale = Math.Clamp(OverlayScale, 0.75f, 2f);
@@ -130,9 +156,9 @@ public sealed class Configuration : IPluginConfiguration
             changed = true;
         }
 
-        if (Version != 4)
+        if (Version != 5)
         {
-            Version = 4;
+            Version = 5;
             changed = true;
         }
 

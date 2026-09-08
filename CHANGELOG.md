@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0.0 - Stage 4: Timer Appearance
+
+- Added selectable icons and colors for every timer.
+- Added automatic and user-selected countdown display formats.
+- Added days-and-clock, total-hours, total-minutes, words, and target-date format options.
+- Added compact and detailed overlay row styles.
+- Updated the timer manager and overlay with dark panels, gold accents, and blue selection highlighting.
+- Removed the overlay title bar.
+- A normal click on an overlay timer still opens and selects that timer in the main window.
+- Clicking and dragging any timer row now moves the whole overlay without opening the timer.
+- Existing timers are preserved and receive default appearance settings automatically.
+
 ## 0.3.2.0 - Hotfix: Overlay Movement
 
 - Corrected overlay position restoration so it is applied only once instead of every frame.

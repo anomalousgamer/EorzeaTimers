@@ -28,6 +28,9 @@ public sealed class MainWindow : Window
     private string editDate = string.Empty;
     private string editTime = string.Empty;
     private bool editIsActive = true;
+    private TimerIcon editIcon = TimerIcon.Clock;
+    private TimerColor editColor = TimerColor.Default;
+    private TimerDisplayFormat editDisplayFormat = TimerDisplayFormat.Auto;
     private int durationDays;
     private int durationHours = 1;
     private int durationMinutes;
@@ -39,11 +42,11 @@ public sealed class MainWindow : Window
     {
         this.plugin = plugin;
 
-        Size = new Vector2(900, 560);
+        Size = new Vector2(960, 680);
         SizeCondition = ImGuiCond.FirstUseEver;
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(760, 500),
+            MinimumSize = new Vector2(800, 620),
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue),
         };
 
@@ -79,13 +82,15 @@ public sealed class MainWindow : Window
 
     private void DrawTimerList(Vector2 size)
     {
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0.045f, 0.05f, 0.06f, 0.96f));
         using var child = ImRaii.Child("TimerList", size, true);
         if (!child.Success)
         {
+            ImGui.PopStyleColor();
             return;
         }
 
-        ImGui.TextUnformatted("Timers");
+        ImGui.TextColored(new Vector4(0.92f, 0.75f, 0.39f, 1f), "Timers");
         ImGui.SameLine();
         ImGui.TextDisabled($"({plugin.Configuration.Timers.Count})");
         ImGui.Separator();
@@ -146,6 +151,8 @@ public sealed class MainWindow : Window
         {
             plugin.OpenOverlaySettingsWindow();
         }
+
+        ImGui.PopStyleColor();
     }
 
     private void DrawTimerRow(TimerEntry timer)
@@ -153,16 +160,46 @@ public sealed class MainWindow : Window
         var selected = !isCreatingNew && selectedTimerId == timer.Id;
         var rowHeight = 58f * ImGuiHelpers.GlobalScale;
         var rowWidth = MathF.Max(1f, ImGui.GetContentRegionAvail().X);
-        var label = $"{timer.Name}\n{FormatRemaining(timer)}###Timer_{timer.Id}";
+        var rowStart = ImGui.GetCursorPos();
+
+        if (selected)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(0.12f, 0.28f, 0.50f, 0.92f));
+            ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.16f, 0.36f, 0.62f, 0.95f));
+            ImGui.PushStyleColor(ImGuiCol.HeaderActive, new Vector4(0.18f, 0.40f, 0.68f, 1f));
+        }
 
         if (ImGui.Selectable(
-                label,
+                $"##Timer_{timer.Id}",
                 selected,
                 ImGuiSelectableFlags.None,
                 new Vector2(rowWidth, rowHeight)))
         {
             SelectTimer(timer.Id);
         }
+
+        if (selected)
+        {
+            ImGui.PopStyleColor(3);
+        }
+
+        var rowEnd = ImGui.GetCursorPos();
+        var scale = ImGuiHelpers.GlobalScale;
+        var color = TimerAppearance.GetColor(timer.Color);
+
+        ImGui.SetCursorPos(rowStart + new Vector2(10f * scale, 8f * scale));
+        using (Plugin.PluginInterface.UiBuilder.IconFontFixedWidthHandle.Push())
+        {
+            ImGui.TextColored(color, TimerAppearance.GetIconGlyph(timer.Icon));
+        }
+
+        ImGui.SetCursorPos(rowStart + new Vector2(38f * scale, 6f * scale));
+        ImGui.TextColored(color, timer.Name);
+
+        ImGui.SetCursorPos(rowStart + new Vector2(38f * scale, 30f * scale));
+        ImGui.TextDisabled(TimerAppearance.FormatTimer(timer));
+
+        ImGui.SetCursorPos(rowEnd);
     }
 
     private void DrawEditor(Vector2 size)
@@ -173,7 +210,9 @@ public sealed class MainWindow : Window
             return;
         }
 
-        ImGui.TextUnformatted(isCreatingNew ? "Add Timer" : "Edit Timer");
+        ImGui.TextColored(
+            new Vector4(0.92f, 0.75f, 0.39f, 1f),
+            isCreatingNew ? "Add Timer" : "Edit Timer");
         ImGui.Separator();
         ImGui.Spacing();
 
@@ -207,6 +246,9 @@ public sealed class MainWindow : Window
         }
 
         DrawDurationInputs();
+        ImGui.Spacing();
+
+        DrawAppearanceInputs();
         ImGui.Spacing();
 
         DrawNotesInput();
@@ -322,6 +364,134 @@ public sealed class MainWindow : Window
         ImGui.TextDisabled(countText);
     }
 
+    private void DrawAppearanceInputs()
+    {
+        ImGui.TextUnformatted("Appearance");
+        ImGui.Separator();
+
+        ImGui.TextUnformatted("Icon");
+        var iconButtonSize = new Vector2(
+            34f * ImGuiHelpers.GlobalScale,
+            30f * ImGuiHelpers.GlobalScale);
+
+        for (var index = 0; index < TimerAppearance.Icons.Length; index++)
+        {
+            var icon = TimerAppearance.Icons[index];
+            var selected = editIcon == icon;
+
+            if (selected)
+            {
+                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.15f, 0.36f, 0.65f, 1f));
+                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.20f, 0.44f, 0.76f, 1f));
+                ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.12f, 0.30f, 0.56f, 1f));
+            }
+
+            using (Plugin.PluginInterface.UiBuilder.IconFontFixedWidthHandle.Push())
+            {
+                if (ImGui.Button(
+                        $"{TimerAppearance.GetIconGlyph(icon)}##TimerIcon_{icon}",
+                        iconButtonSize))
+                {
+                    editIcon = icon;
+                }
+            }
+
+            if (selected)
+            {
+                ImGui.PopStyleColor(3);
+            }
+
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(TimerAppearance.GetIconName(icon));
+            }
+
+            if (index < TimerAppearance.Icons.Length - 1)
+            {
+                ImGui.SameLine();
+            }
+        }
+
+        ImGui.TextUnformatted("Color");
+        var colorButtonSize = new Vector2(
+            30f * ImGuiHelpers.GlobalScale,
+            26f * ImGuiHelpers.GlobalScale);
+
+        for (var index = 0; index < TimerAppearance.Colors.Length; index++)
+        {
+            var colorOption = TimerAppearance.Colors[index];
+            var color = TimerAppearance.GetColor(colorOption);
+            var selected = editColor == colorOption;
+
+            ImGui.PushStyleColor(ImGuiCol.Button, color);
+            ImGui.PushStyleColor(
+                ImGuiCol.ButtonHovered,
+                new Vector4(
+                    MathF.Min(1f, color.X + 0.12f),
+                    MathF.Min(1f, color.Y + 0.12f),
+                    MathF.Min(1f, color.Z + 0.12f),
+                    1f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, color);
+
+            if (selected)
+            {
+                ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 3f * ImGuiHelpers.GlobalScale);
+                ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(1f, 1f, 1f, 1f));
+            }
+
+            if (ImGui.Button($"##TimerColor_{colorOption}", colorButtonSize))
+            {
+                editColor = colorOption;
+            }
+
+            if (selected)
+            {
+                ImGui.PopStyleColor();
+                ImGui.PopStyleVar();
+            }
+
+            ImGui.PopStyleColor(3);
+
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(TimerAppearance.GetColorName(colorOption));
+            }
+
+            if (index < TimerAppearance.Colors.Length - 1)
+            {
+                ImGui.SameLine();
+            }
+        }
+
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted("Display format");
+        ImGui.SameLine(140f * ImGuiHelpers.GlobalScale);
+        ImGui.SetNextItemWidth(-1);
+
+        if (ImGui.BeginCombo(
+                "##TimerDisplayFormat",
+                TimerAppearance.GetDisplayFormatName(editDisplayFormat)))
+        {
+            foreach (var format in TimerAppearance.DisplayFormats)
+            {
+                var selected = editDisplayFormat == format;
+                if (ImGui.Selectable(
+                        TimerAppearance.GetDisplayFormatName(format),
+                        selected))
+                {
+                    editDisplayFormat = format;
+                }
+
+                if (selected)
+                {
+                    ImGui.SetItemDefaultFocus();
+                }
+            }
+
+            ImGui.EndCombo();
+        }
+    }
+
     private void BeginNewTimer()
     {
         if (!isCreatingNew)
@@ -339,6 +509,9 @@ public sealed class MainWindow : Window
         editDate = defaultTarget.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         editTime = defaultTarget.ToString("HH:mm", CultureInfo.InvariantCulture);
         editIsActive = true;
+        editIcon = TimerIcon.Clock;
+        editColor = TimerColor.Default;
+        editDisplayFormat = TimerDisplayFormat.Auto;
         durationDays = 0;
         durationHours = 1;
         durationMinutes = 0;
@@ -370,6 +543,9 @@ public sealed class MainWindow : Window
         editDate = targetLocal.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         editTime = targetLocal.ToString("HH:mm", CultureInfo.InvariantCulture);
         editIsActive = timer.IsActive;
+        editIcon = timer.Icon;
+        editColor = timer.Color;
+        editDisplayFormat = timer.DisplayFormat;
         durationDays = 0;
         durationHours = 1;
         durationMinutes = 0;
@@ -452,6 +628,9 @@ public sealed class MainWindow : Window
         timer.Notes = trimmedNotes;
         timer.EndUnixSeconds = endUnixSeconds;
         timer.IsActive = editIsActive;
+        timer.Icon = editIcon;
+        timer.Color = editColor;
+        timer.DisplayFormat = editDisplayFormat;
 
         if (isNewTimer)
         {
@@ -516,6 +695,9 @@ public sealed class MainWindow : Window
             Notes = source.Notes,
             EndUnixSeconds = source.EndUnixSeconds,
             IsActive = source.IsActive,
+            Icon = source.Icon,
+            Color = source.Color,
+            DisplayFormat = source.DisplayFormat,
         };
 
         var sourceIndex = plugin.Configuration.Timers.IndexOf(source);
@@ -574,29 +756,4 @@ public sealed class MainWindow : Window
         return baseName + suffix;
     }
 
-    private static string FormatRemaining(TimerEntry timer)
-    {
-        if (!timer.IsActive)
-        {
-            return "Disabled";
-        }
-
-        var remaining =
-            DateTimeOffset.FromUnixTimeSeconds(timer.EndUnixSeconds)
-            - DateTimeOffset.UtcNow;
-
-        if (remaining <= TimeSpan.Zero)
-        {
-            return "Complete";
-        }
-
-        if (remaining.TotalDays >= 1)
-        {
-            return
-                $"{(int)remaining.TotalDays}d {remaining.Hours:00}:{remaining.Minutes:00}:{remaining.Seconds:00}";
-        }
-
-        return
-            $"{(int)remaining.TotalHours:00}:{remaining.Minutes:00}:{remaining.Seconds:00}";
-    }
 }

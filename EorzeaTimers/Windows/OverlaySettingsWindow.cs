@@ -3,6 +3,7 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
+using EorzeaTimers.Models;
 
 namespace EorzeaTimers.Windows;
 
@@ -17,12 +18,12 @@ public sealed class OverlaySettingsWindow : Window
         this.plugin = plugin;
         this.overlayWindow = overlayWindow;
 
-        Size = new Vector2(500, 535);
+        Size = new Vector2(520, 600);
         SizeCondition = ImGuiCond.FirstUseEver;
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(440, 490),
-            MaximumSize = new Vector2(700, 760),
+            MinimumSize = new Vector2(460, 540),
+            MaximumSize = new Vector2(720, 820),
         };
     }
 
@@ -75,7 +76,9 @@ public sealed class OverlaySettingsWindow : Window
         }
 
         ImGui.TextDisabled(
-            "To move the overlay, turn off Lock, Pin, and Click-through, then drag its title bar.");
+            "To move the titleless overlay, turn off Lock, Pin, and Click-through,");
+        ImGui.TextDisabled(
+            "then click and drag any timer row. A normal click opens that timer.");
         ImGui.TextDisabled(
             "If click-through is enabled, reopen these settings with /etimers overlay.");
 
@@ -112,6 +115,30 @@ public sealed class OverlaySettingsWindow : Window
                 Math.Clamp(opacityPercent / 100f, 0.2f, 1f);
             changed = true;
         }
+
+        var rowStyle = configuration.OverlayRowStyle;
+        ImGui.SetNextItemWidth(260f * ImGuiHelpers.GlobalScale);
+        if (ImGui.BeginCombo("Row style", rowStyle.ToString()))
+        {
+            foreach (var option in Enum.GetValues<OverlayRowStyle>())
+            {
+                var selected = rowStyle == option;
+                if (ImGui.Selectable(option.ToString(), selected))
+                {
+                    configuration.OverlayRowStyle = option;
+                    changed = true;
+                }
+
+                if (selected)
+                {
+                    ImGui.SetItemDefaultFocus();
+                }
+            }
+
+            ImGui.EndCombo();
+        }
+
+        ImGui.TextDisabled("Detailed rows also show timer notes when available.");
 
         ImGui.Spacing();
         ImGui.TextUnformatted("Visibility");

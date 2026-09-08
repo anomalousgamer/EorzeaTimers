@@ -14,4 +14,10 @@ public sealed class TimerEntry
     public long EndUnixSeconds { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    public TimerIcon Icon { get; set; } = TimerIcon.Clock;
+
+    public TimerColor Color { get; set; } = TimerColor.Default;
+
+    public TimerDisplayFormat DisplayFormat { get; set; } = TimerDisplayFormat.Auto;
 }

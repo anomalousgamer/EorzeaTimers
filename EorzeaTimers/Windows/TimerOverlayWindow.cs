@@ -2,6 +2,7 @@ using System;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using EorzeaTimers.Models;
 
@@ -15,6 +16,8 @@ public sealed class TimerOverlayWindow : Window
     private bool positionNeedsApply = true;
     private Vector2? pendingPosition;
     private int stablePositionFrames;
+    private bool rowDragOccurred;
+    private bool overlayStylePushed;
 
     public TimerOverlayWindow(Plugin plugin)
         : base("Eorzea Timers###EorzeaTimersOverlay")
@@ -26,8 +29,8 @@ public sealed class TimerOverlayWindow : Window
         RespectCloseHotkey = false;
         DisableWindowSounds = true;
         ForceMainWindow = true;
-        AllowPinning = true;
-        AllowClickthrough = true;
+        AllowPinning = false;
+        AllowClickthrough = false;
     }
 
     public override bool DrawConditions()
@@ -87,7 +90,8 @@ public sealed class TimerOverlayWindow : Window
             | ImGuiWindowFlags.NoScrollWithMouse
             | ImGuiWindowFlags.NoCollapse
             | ImGuiWindowFlags.NoResize
-            | ImGuiWindowFlags.NoSavedSettings;
+            | ImGuiWindowFlags.NoSavedSettings
+            | ImGuiWindowFlags.NoTitleBar;
 
         if (configuration.OverlayLocked)
         {
@@ -123,6 +127,13 @@ public sealed class TimerOverlayWindow : Window
             // prevents the user from dragging the overlay.
             Position = null;
         }
+
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.035f, 0.04f, 0.05f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.78f, 0.61f, 0.28f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.Separator, new Vector4(0.60f, 0.47f, 0.23f, 0.72f));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 1f);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 6f);
+        overlayStylePushed = true;
     }
 
     public override void Draw()
@@ -149,11 +160,28 @@ public sealed class TimerOverlayWindow : Window
 
         if (!drewTimer)
         {
-            ImGui.TextDisabled("No active timers.");
+            DrawEmptyRow();
+        }
+
+        if (!ImGui.IsMouseDown(ImGuiMouseButton.Left))
+        {
+            rowDragOccurred = false;
         }
 
         SaveNativeWindowStateIfChanged();
         TrackPosition();
+    }
+
+    public override void PostDraw()
+    {
+        if (!overlayStylePushed)
+        {
+            return;
+        }
+
+        ImGui.PopStyleVar(2);
+        ImGui.PopStyleColor(3);
+        overlayStylePushed = false;
     }
 
     internal void RequestPositionReset()
@@ -165,33 +193,118 @@ public sealed class TimerOverlayWindow : Window
 
     private void DrawTimerRow(TimerEntry timer)
     {
-        var remainingText = FormatRemaining(timer);
+        var configuration = plugin.Configuration;
+        var detailed = configuration.OverlayRowStyle == OverlayRowStyle.Detailed;
+        var remainingText = TimerAppearance.FormatTimer(timer);
         var rowStart = ImGui.GetCursorPos();
-        var rowHeight = ImGui.GetTextLineHeight() + ImGui.GetStyle().FramePadding.Y * 2f;
+        var globalScale = ImGuiHelpers.GlobalScale;
+        var lineHeight = ImGui.GetTextLineHeight();
+        var padding = ImGui.GetStyle().FramePadding;
+        var rowHeight = detailed
+            ? lineHeight * 2f + padding.Y * 3f
+            : lineHeight + padding.Y * 2f;
+        var rowWidth = MathF.Max(1f, ImGui.GetContentRegionAvail().X);
 
-        if (ImGui.Selectable(
-                $"##OverlayTimer_{timer.Id}",
-                false,
-                ImGuiSelectableFlags.None,
-                new Vector2(-1f, rowHeight)))
-        {
-            plugin.OpenTimer(timer.Id);
-        }
+        ImGui.InvisibleButton(
+            $"##OverlayTimer_{timer.Id}",
+            new Vector2(rowWidth, rowHeight));
+
+        HandleRowInteraction(timer.Id);
 
         var rowEnd = ImGui.GetCursorPos();
-        var padding = ImGui.GetStyle().FramePadding;
-        ImGui.SetCursorPos(rowStart + padding);
-        ImGui.TextUnformatted(timer.Name);
+        var iconColor = TimerAppearance.GetColor(timer.Color);
+        var horizontalPadding = 8f * globalScale;
+        var iconWidth = 24f * globalScale;
+
+        if (ImGui.IsItemHovered() && !configuration.OverlayClickThrough)
+        {
+            var rowMinimum = ImGui.GetItemRectMin();
+            var rowMaximum = ImGui.GetItemRectMax();
+            ImGui.GetWindowDrawList().AddRectFilled(
+                rowMinimum,
+                rowMaximum,
+                ImGui.GetColorU32(new Vector4(0.12f, 0.28f, 0.50f, 0.42f)),
+                4f * globalScale);
+        }
+
+        ImGui.SetCursorPos(rowStart + new Vector2(horizontalPadding, padding.Y));
+        using (Plugin.PluginInterface.UiBuilder.IconFontFixedWidthHandle.Push())
+        {
+            ImGui.TextColored(iconColor, TimerAppearance.GetIconGlyph(timer.Icon));
+        }
+
+        var textStartX = rowStart.X + horizontalPadding + iconWidth;
+        var nameY = rowStart.Y + padding.Y;
+        ImGui.SetCursorPos(new Vector2(textStartX, nameY));
+        ImGui.TextColored(iconColor, timer.Name);
 
         var remainingWidth = ImGui.CalcTextSize(remainingText).X;
         var contentRight = ImGui.GetWindowContentRegionMax().X;
-        ImGui.SameLine();
-        ImGui.SetCursorPosX(MathF.Max(
-            ImGui.GetCursorPosX(),
-            contentRight - remainingWidth - padding.X));
-        ImGui.TextUnformatted(remainingText);
+        var remainingX = MathF.Max(
+            textStartX + 60f * globalScale,
+            contentRight - remainingWidth - horizontalPadding);
+        ImGui.SetCursorPos(new Vector2(remainingX, nameY));
+        ImGui.TextColored(new Vector4(0.95f, 0.88f, 0.70f, 1f), remainingText);
+
+        if (detailed)
+        {
+            ImGui.SetCursorPos(
+                new Vector2(textStartX, nameY + lineHeight + padding.Y * 0.5f));
+            if (string.IsNullOrWhiteSpace(timer.Notes))
+            {
+                ImGui.TextDisabled("No notes");
+            }
+            else
+            {
+                ImGui.TextDisabled(timer.Notes);
+            }
+        }
 
         ImGui.SetCursorPos(rowEnd);
+    }
+
+    private void DrawEmptyRow()
+    {
+        var rowStart = ImGui.GetCursorPos();
+        var padding = ImGui.GetStyle().FramePadding;
+        var rowHeight = ImGui.GetTextLineHeight() + padding.Y * 2f;
+
+        ImGui.InvisibleButton(
+            "##EmptyOverlayRow",
+            new Vector2(MathF.Max(1f, ImGui.GetContentRegionAvail().X), rowHeight));
+        HandleRowInteraction(null);
+
+        var rowEnd = ImGui.GetCursorPos();
+        ImGui.SetCursorPos(rowStart + padding);
+        ImGui.TextDisabled("No active timers.");
+        ImGui.SetCursorPos(rowEnd);
+    }
+
+    private void HandleRowInteraction(Guid? timerId)
+    {
+        var configuration = plugin.Configuration;
+        var canInteract = !configuration.OverlayClickThrough;
+        var canMove =
+            canInteract
+            && !configuration.OverlayLocked
+            && !configuration.OverlayPinned;
+
+        if (canMove
+            && ImGui.IsItemActive()
+            && ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+        {
+            rowDragOccurred = true;
+            ImGui.SetWindowPos(ImGui.GetWindowPos() + ImGui.GetIO().MouseDelta);
+        }
+
+        if (canInteract
+            && timerId.HasValue
+            && ImGui.IsItemDeactivated()
+            && ImGui.IsItemHovered()
+            && !rowDragOccurred)
+        {
+            plugin.OpenTimer(timerId.Value);
+        }
     }
 
     private void SaveNativeWindowStateIfChanged()
@@ -271,24 +384,4 @@ public sealed class TimerOverlayWindow : Window
             60f);
     }
 
-    private static string FormatRemaining(TimerEntry timer)
-    {
-        var remaining =
-            DateTimeOffset.FromUnixTimeSeconds(timer.EndUnixSeconds)
-            - DateTimeOffset.UtcNow;
-
-        if (remaining <= TimeSpan.Zero)
-        {
-            return "Complete";
-        }
-
-        if (remaining.TotalDays >= 1)
-        {
-            return
-                $"{(int)remaining.TotalDays}d {remaining.Hours:00}:{remaining.Minutes:00}:{remaining.Seconds:00}";
-        }
-
-        return
-            $"{(int)remaining.TotalHours:00}:{remaining.Minutes:00}:{remaining.Seconds:00}";
-    }
 }
