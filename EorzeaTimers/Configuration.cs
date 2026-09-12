@@ -9,7 +9,7 @@ namespace EorzeaTimers;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 7;
+    public int Version { get; set; } = 8;
 
     public List<TimerEntry> Timers { get; set; } = new();
 
@@ -55,11 +55,14 @@ public sealed class Configuration : IPluginConfiguration
 
     public float OverlayPositionY { get; set; }
 
+    public int DefaultSnoozeMinutes { get; set; } = 5;
+
     internal bool MigrateToCurrentVersion()
     {
         var changed = false;
         var migratingToVersionSix = Version < 6;
         var migratingToVersionSeven = Version < 7;
+        var migratingToVersionEight = Version < 8;
 
         if (migratingToVersionSix)
         {
@@ -139,6 +142,31 @@ public sealed class Configuration : IPluginConfiguration
                 changed = true;
             }
 
+            if (migratingToVersionEight)
+            {
+                timer.ShowNotesInOverlay =
+                    OverlayRowStyle == OverlayRowStyle.Detailed;
+                timer.CompletionSound = CompletionSound.StandardNotification;
+                timer.RepeatMode = TimerRepeatMode.None;
+                timer.RepeatIntervalUnit = RepeatIntervalUnit.Hours;
+                timer.RepeatInterval = 1;
+                timer.RepeatAnchor = TimerRepeatAnchor.OriginalSchedule;
+                timer.RecurrenceAnchorUnixSeconds = timer.EndUnixSeconds;
+
+                var remainingSeconds =
+                    timer.EndUnixSeconds - DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                timer.RestartDurationSeconds = remainingSeconds >= 60
+                    ? remainingSeconds
+                    : 3600;
+
+                var targetLocal =
+                    DateTimeOffset.FromUnixTimeSeconds(timer.EndUnixSeconds).LocalDateTime;
+                timer.RepeatWeekdayMask = 1 << (int)targetLocal.DayOfWeek;
+                timer.RepeatDayOfMonth = targetLocal.Day;
+                timer.IsSnoozed = false;
+                changed = true;
+            }
+
             if (!Enum.IsDefined(typeof(TimerIcon), timer.Icon))
             {
                 timer.Icon = TimerIcon.Clock;
@@ -154,6 +182,75 @@ public sealed class Configuration : IPluginConfiguration
             if (!Enum.IsDefined(typeof(TimerDisplayFormat), timer.DisplayFormat))
             {
                 timer.DisplayFormat = TimerDisplayFormat.Auto;
+                changed = true;
+            }
+
+            if (!Enum.IsDefined(typeof(CompletionSound), timer.CompletionSound))
+            {
+                timer.CompletionSound = CompletionSound.StandardNotification;
+                changed = true;
+            }
+
+            if (!Enum.IsDefined(typeof(TimerRepeatMode), timer.RepeatMode))
+            {
+                timer.RepeatMode = TimerRepeatMode.None;
+                changed = true;
+            }
+
+            if (!Enum.IsDefined(typeof(RepeatIntervalUnit), timer.RepeatIntervalUnit))
+            {
+                timer.RepeatIntervalUnit = RepeatIntervalUnit.Hours;
+                changed = true;
+            }
+
+            if (!Enum.IsDefined(typeof(TimerRepeatAnchor), timer.RepeatAnchor))
+            {
+                timer.RepeatAnchor = TimerRepeatAnchor.OriginalSchedule;
+                changed = true;
+            }
+
+            var validRepeatInterval = Math.Clamp(timer.RepeatInterval, 1, 10000);
+            if (timer.RepeatInterval != validRepeatInterval)
+            {
+                timer.RepeatInterval = validRepeatInterval;
+                changed = true;
+            }
+
+            var validWeekdayMask = timer.RepeatWeekdayMask & 0x7F;
+            if (timer.RepeatMode == TimerRepeatMode.SelectedWeekdays
+                && validWeekdayMask == 0)
+            {
+                var targetDay = DateTimeOffset
+                    .FromUnixTimeSeconds(timer.EndUnixSeconds)
+                    .LocalDateTime
+                    .DayOfWeek;
+                validWeekdayMask = 1 << (int)targetDay;
+            }
+
+            if (timer.RepeatWeekdayMask != validWeekdayMask)
+            {
+                timer.RepeatWeekdayMask = validWeekdayMask;
+                changed = true;
+            }
+
+            var validMonthDay = Math.Clamp(timer.RepeatDayOfMonth, 1, 31);
+            if (timer.RepeatDayOfMonth != validMonthDay)
+            {
+                timer.RepeatDayOfMonth = validMonthDay;
+                changed = true;
+            }
+
+            if (timer.RecurrenceAnchorUnixSeconds <= 0)
+            {
+                timer.RecurrenceAnchorUnixSeconds = timer.EndUnixSeconds;
+                changed = true;
+            }
+
+            var validRestartDuration =
+                Math.Clamp(timer.RestartDurationSeconds, 60, 315360000);
+            if (timer.RestartDurationSeconds != validRestartDuration)
+            {
+                timer.RestartDurationSeconds = validRestartDuration;
                 changed = true;
             }
         }
@@ -204,6 +301,13 @@ public sealed class Configuration : IPluginConfiguration
             changed = true;
         }
 
+        var validSnoozeMinutes = Math.Clamp(DefaultSnoozeMinutes, 1, 10080);
+        if (DefaultSnoozeMinutes != validSnoozeMinutes)
+        {
+            DefaultSnoozeMinutes = validSnoozeMinutes;
+            changed = true;
+        }
+
         if (OverlayPositionSet
             && (!float.IsFinite(OverlayPositionX) || !float.IsFinite(OverlayPositionY)))
         {
@@ -213,9 +317,9 @@ public sealed class Configuration : IPluginConfiguration
             changed = true;
         }
 
-        if (Version != 7)
+        if (Version != 8)
         {
-            Version = 7;
+            Version = 8;
             changed = true;
         }
 

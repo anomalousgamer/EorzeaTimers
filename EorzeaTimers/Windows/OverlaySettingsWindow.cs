@@ -111,7 +111,8 @@ public sealed class OverlaySettingsWindow : Window
             "While enabled, the overlay ignores all mouse input. Disable it from this settings window or use /etimers clickthrough off.");
         ImGui.PopStyleColor();
 
-        ImGui.TextDisabled("Click a timer to open it. Drag a timer row to move the overlay.");
+        ImGui.TextDisabled("Left-click a timer to open it. Right-click to toggle its notes.");
+        ImGui.TextDisabled("Drag a timer row to move the overlay.");
         ImGui.TextDisabled("Drag the bottom-right grip to change the overlay width.");
 
         ImGui.Spacing();
@@ -170,29 +171,8 @@ public sealed class OverlaySettingsWindow : Window
             changed = true;
         }
 
-        var rowStyle = configuration.OverlayRowStyle;
-        ImGui.SetNextItemWidth(280f * ImGuiHelpers.GlobalScale);
-        if (ImGui.BeginCombo("Row style", rowStyle.ToString()))
-        {
-            foreach (var option in Enum.GetValues<OverlayRowStyle>())
-            {
-                var selected = rowStyle == option;
-                if (ImGui.Selectable(option.ToString(), selected))
-                {
-                    configuration.OverlayRowStyle = option;
-                    changed = true;
-                }
-
-                if (selected)
-                {
-                    ImGui.SetItemDefaultFocus();
-                }
-            }
-
-            ImGui.EndCombo();
-        }
-
-        ImGui.TextDisabled("Detailed rows also show timer notes when available.");
+        ImGui.TextDisabled(
+            "Overlay notes are controlled separately for each timer in its editor or by right-clicking its overlay row.");
 
         ImGui.Spacing();
         ImGui.TextColored(new Vector4(0.92f, 0.75f, 0.39f, 1f), "Visibility");
@@ -260,7 +240,6 @@ public sealed class OverlaySettingsWindow : Window
             configuration.OverlayScale = DefaultScale;
             configuration.OverlayWidth = DefaultWidth;
             configuration.OverlayOpacity = DefaultOpacity;
-            configuration.OverlayRowStyle = OverlayRowStyle.Compact;
             configuration.Save();
         }
 

@@ -17,11 +17,33 @@ public sealed class TimerEntry
 
     public bool ShowInOverlay { get; set; } = true;
 
+    public bool ShowNotesInOverlay { get; set; }
+
     public bool ShowCompletionPopup { get; set; } = true;
 
     public bool PlaySoundOnCompletion { get; set; } = true;
 
+    public CompletionSound CompletionSound { get; set; } = CompletionSound.StandardNotification;
+
     public bool PrintCompletionToChat { get; set; }
+
+    public TimerRepeatMode RepeatMode { get; set; } = TimerRepeatMode.None;
+
+    public RepeatIntervalUnit RepeatIntervalUnit { get; set; } = RepeatIntervalUnit.Hours;
+
+    public int RepeatInterval { get; set; } = 1;
+
+    public int RepeatWeekdayMask { get; set; }
+
+    public int RepeatDayOfMonth { get; set; } = 1;
+
+    public TimerRepeatAnchor RepeatAnchor { get; set; } = TimerRepeatAnchor.OriginalSchedule;
+
+    public long RecurrenceAnchorUnixSeconds { get; set; }
+
+    public long RestartDurationSeconds { get; set; } = 3600;
+
+    public bool IsSnoozed { get; set; }
 
     public TimerIcon Icon { get; set; } = TimerIcon.Clock;
 

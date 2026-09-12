@@ -2,18 +2,19 @@
 
 A customizable timer plugin for FFXIV and Dalamud.
 
-## Version 0.5.0.0
+## Version 0.6.0.0
 
-Stage 5 makes timers actively notify the player when they finish.
+Stage 6 adds repeating schedules, snooze controls, individual overlay notes, and selectable completion sounds.
 
-- Show a custom completion popup with a Dismiss button.
-- Choose popup, sound, and chat-message alerts independently for every timer.
-- Test completion alerts directly from the timer editor before saving.
-- Queue several completed timers and display them one at a time.
-- Prevent a completed timer from alerting more than once.
-- Avoid unexpected alerts from timers that were already complete when the plugin loaded.
-- Keep the overlay stationary while dragging only the resize grip.
-- Remove the temporary v0.4.2.0 4/20 image.
+- Repeat timers at a custom interval, daily, weekly, on selected weekdays, or monthly.
+- Preserve the original schedule or calculate the next occurrence from dismissal time.
+- Snooze completion alerts for preset or custom durations.
+- Restart a saved timer manually and preview its following occurrence.
+- Choose from the existing notification sound and twelve FFXIV chat sound effects.
+- Preview a timer's selected sound before saving.
+- Show notes separately for each overlay timer and toggle them with right-click.
+- Keep Save, Cancel, and Restart visible while the editor settings scroll.
+- Advance missed repeating timers quietly after login instead of producing old alerts.
 
 ## Current Features
 
@@ -23,7 +24,7 @@ Stage 5 makes timers actively notify the player when they finish.
 - Target date/time or relative duration input.
 - Automatic and user-selected countdown formats.
 - A persistent in-game overlay for active timers.
-- Compact and detailed overlay row styles.
+- Per-timer overlay notes rendered beneath timer names.
 - Movable positioning with automatic position saving.
 - Adjustable overlay scale, width, and background opacity.
 - Lock and click-through controls.
@@ -34,9 +35,18 @@ Stage 5 makes timers actively notify the player when they finish.
 - Per-timer Show in overlay controls.
 - A floating bottom-right overlay width resize grip and width presets.
 - A subtle pulsing border around completed overlay timers.
+- Right-click overlay timers to show or hide their notes without opening the editor.
 - Per-timer completion popup, sound, and chat-message settings.
 - A completion-alert test button that uses the current editor settings.
 - Queued completion popups with a Dismiss button.
+- Preset and custom snooze durations.
+- The existing standard notification plus twelve selectable FFXIV chat sounds.
+- Sound previewing directly from the timer editor.
+- Custom-interval, daily, weekly, selected-weekday, and monthly repeating timers.
+- Original-schedule and dismissal-time recurrence behavior.
+- Manual timer restarting and following-occurrence previews.
+- Persistent repeat and snooze state.
+- Quiet advancement past occurrences missed while logged out.
 - Duplicate-alert prevention and safe handling of simultaneous completions.
 - Existing completed timers are ignored when the plugin first loads.
 - Automatic migration of timers created in earlier releases.
@@ -51,7 +61,7 @@ Stage 5 makes timers actively notify the player when they finish.
 - The `/etimers help` command for commands and overlay guidance.
 - The `/etimers changes` command for reopening the changelog.
 
-Later releases will add snooze controls, repeating timers, and game-linked timer sources.
+Later releases will add game-linked timer sources, including selected FFXIV schedules.
 
 ## Development build
 

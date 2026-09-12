@@ -66,10 +66,7 @@ public sealed class Plugin : IDalamudPlugin
         Configuration =
             PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
-        if (Configuration.MigrateToCurrentVersion())
-        {
-            Configuration.Save();
-        }
+        var configurationChanged = Configuration.MigrateToCurrentVersion();
 
         var loadedAtUnixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         foreach (var timer in Configuration.Timers)
@@ -77,14 +74,25 @@ public sealed class Plugin : IDalamudPlugin
             if (timer.EndUnixSeconds <= loadedAtUnixSeconds)
             {
                 completionAlertedTimerIds.Add(timer.Id);
+
+                if (timer.IsActive && timer.RepeatMode != TimerRepeatMode.None)
+                {
+                    ScheduleNextRepeat(timer, loadedAtUnixSeconds);
+                    configurationChanged = true;
+                }
             }
+        }
+
+        if (configurationChanged)
+        {
+            Configuration.Save();
         }
 
         mainWindow = new MainWindow(this);
         changelogWindow = new ChangelogWindow(this);
         overlayWindow = new TimerOverlayWindow(this);
         overlaySettingsWindow = new OverlaySettingsWindow(this, overlayWindow);
-        completionAlertWindow = new CompletionAlertWindow();
+        completionAlertWindow = new CompletionAlertWindow(this);
 
         windowSystem.AddWindow(mainWindow);
         windowSystem.AddWindow(changelogWindow);
@@ -274,7 +282,9 @@ public sealed class Plugin : IDalamudPlugin
         ChatGui.Print("Lock prevents moving and resizing but still allows timer clicks.", ChatTag);
         ChatGui.Print("Click-through passes mouse input to the game and disables overlay interaction.", ChatTag);
         ChatGui.Print("Use Show in overlay in the timer editor to include or exclude each timer.", ChatTag);
-        ChatGui.Print("Completion popup, sound, chat, and test options are set per timer.", ChatTag);
+        ChatGui.Print("Right-click an overlay timer to show or hide its notes.", ChatTag);
+        ChatGui.Print("Completion popup, sound choice, chat, repeat, and test options are set per timer.", ChatTag);
+        ChatGui.Print("Completion popups can be dismissed or snoozed.", ChatTag);
     }
 
     private void OpenMainWindow()
@@ -292,6 +302,27 @@ public sealed class Plugin : IDalamudPlugin
         mainWindow.OpenTimer(timerId);
     }
 
+    internal void ToggleTimerNotes(Guid timerId)
+    {
+        var timer = Configuration.Timers.Find(entry => entry.Id == timerId);
+        if (timer is null)
+        {
+            return;
+        }
+
+        timer.ShowNotesInOverlay = !timer.ShowNotesInOverlay;
+        mainWindow.UpdateShowNotesSetting(timerId, timer.ShowNotesInOverlay);
+        Configuration.Save();
+    }
+
+    internal bool IsTimerAwaitingCompletion(Guid timerId)
+    {
+        var timer = Configuration.Timers.Find(entry => entry.Id == timerId);
+        return timer is not null
+            && timer.IsActive
+            && timer.EndUnixSeconds <= DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    }
+
     internal void TestCompletionAlert(
         string name,
         string notes,
@@ -299,6 +330,7 @@ public sealed class Plugin : IDalamudPlugin
         TimerColor color,
         bool showPopup,
         bool playSound,
+        CompletionSound completionSound,
         bool printToChat)
     {
         if (showPopup)
@@ -313,8 +345,88 @@ public sealed class Plugin : IDalamudPlugin
 
         if (playSound)
         {
-            PlayCompletionSound();
+            PlayCompletionSound(completionSound);
         }
+    }
+
+    internal void PreviewCompletionSound(CompletionSound sound)
+    {
+        PlayCompletionSound(sound);
+    }
+
+    internal void DismissCompletionAlert(Guid timerId)
+    {
+        var timer = Configuration.Timers.Find(entry => entry.Id == timerId);
+        if (timer is null)
+        {
+            return;
+        }
+
+        var changed = false;
+        if (timer.RepeatMode != TimerRepeatMode.None)
+        {
+            ScheduleNextRepeat(timer, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            completionAlertedTimerIds.Remove(timer.Id);
+            changed = true;
+        }
+
+        if (timer.IsSnoozed)
+        {
+            timer.IsSnoozed = false;
+            changed = true;
+        }
+
+        if (changed)
+        {
+            Configuration.Save();
+        }
+    }
+
+    internal void SnoozeTimer(Guid timerId, int minutes)
+    {
+        var timer = Configuration.Timers.Find(entry => entry.Id == timerId);
+        if (timer is null)
+        {
+            return;
+        }
+
+        var safeMinutes = Math.Clamp(minutes, 1, 10080);
+        timer.EndUnixSeconds = DateTimeOffset.UtcNow
+            .AddMinutes(safeMinutes)
+            .ToUnixTimeSeconds();
+        timer.IsActive = true;
+        timer.IsSnoozed = true;
+        completionAlertedTimerIds.Remove(timer.Id);
+
+        Configuration.DefaultSnoozeMinutes = safeMinutes;
+        Configuration.Save();
+    }
+
+    internal bool RestartTimer(Guid timerId)
+    {
+        var timer = Configuration.Timers.Find(entry => entry.Id == timerId);
+        if (timer is null)
+        {
+            return false;
+        }
+
+        var nowUnixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        if (timer.RepeatMode == TimerRepeatMode.None)
+        {
+            timer.EndUnixSeconds = nowUnixSeconds
+                + Math.Clamp(timer.RestartDurationSeconds, 60, 315360000);
+            timer.RecurrenceAnchorUnixSeconds = timer.EndUnixSeconds;
+            timer.IsSnoozed = false;
+        }
+        else
+        {
+            ScheduleNextRepeat(timer, nowUnixSeconds);
+        }
+
+        timer.IsActive = true;
+        completionAlertedTimerIds.Remove(timer.Id);
+        Configuration.Save();
+        return true;
     }
 
     internal void ApplyUiHideSettings()
@@ -395,7 +507,8 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
-        var shouldPlaySound = false;
+        CompletionSound? soundToPlay = null;
+        var timersChanged = false;
         foreach (var timer in newlyCompleted)
         {
             if (timer.ShowCompletionPopup)
@@ -408,22 +521,57 @@ public sealed class Plugin : IDalamudPlugin
                 ChatGui.Print($"Timer complete: {timer.Name} has finished.", ChatTag);
             }
 
-            shouldPlaySound |= timer.PlaySoundOnCompletion;
+            if (timer.PlaySoundOnCompletion && !soundToPlay.HasValue)
+            {
+                soundToPlay = timer.CompletionSound;
+            }
+
+            if (!timer.ShowCompletionPopup
+                && timer.RepeatMode != TimerRepeatMode.None)
+            {
+                ScheduleNextRepeat(timer, nowUnixSeconds);
+                timersChanged = true;
+            }
+            else if (!timer.ShowCompletionPopup && timer.IsSnoozed)
+            {
+                timer.IsSnoozed = false;
+                timersChanged = true;
+            }
         }
 
         // Several timers completing on the same update share one sound so the
         // user gets a clear alert instead of several effects playing together.
-        if (shouldPlaySound)
+        if (soundToPlay.HasValue)
         {
-            PlayCompletionSound();
+            PlayCompletionSound(soundToPlay.Value);
+        }
+
+        if (timersChanged)
+        {
+            Configuration.Save();
         }
     }
 
-    private static unsafe void PlayCompletionSound()
+    private static void ScheduleNextRepeat(TimerEntry timer, long afterUnixSeconds)
+    {
+        timer.EndUnixSeconds =
+            TimerSchedule.GetNextOccurrenceUnixSeconds(timer, afterUnixSeconds);
+        timer.IsSnoozed = false;
+    }
+
+    private static unsafe void PlayCompletionSound(CompletionSound sound)
     {
         try
         {
-            UIGlobals.PlaySoundEffect(CompletionSoundEffectId);
+            var chatSoundEffectId = CompletionSounds.GetChatSoundEffectId(sound);
+            if (chatSoundEffectId.HasValue)
+            {
+                UIGlobals.PlayChatSoundEffect(chatSoundEffectId.Value);
+            }
+            else
+            {
+                UIGlobals.PlaySoundEffect(CompletionSoundEffectId);
+            }
         }
         catch (Exception exception)
         {

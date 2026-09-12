@@ -11,6 +11,17 @@ namespace EorzeaTimers.Windows;
 
 public sealed class MainWindow : Window
 {
+    private static readonly (DayOfWeek Day, string Label)[] WeekdayOptions =
+    [
+        (DayOfWeek.Sunday, "Sun"),
+        (DayOfWeek.Monday, "Mon"),
+        (DayOfWeek.Tuesday, "Tue"),
+        (DayOfWeek.Wednesday, "Wed"),
+        (DayOfWeek.Thursday, "Thu"),
+        (DayOfWeek.Friday, "Fri"),
+        (DayOfWeek.Saturday, "Sat"),
+    ];
+
     private enum TimerInputMode
     {
         TargetDateTime,
@@ -29,9 +40,17 @@ public sealed class MainWindow : Window
     private string editTime = string.Empty;
     private bool editIsActive = true;
     private bool editShowInOverlay = true;
+    private bool editShowNotesInOverlay;
     private bool editShowCompletionPopup = true;
     private bool editPlaySoundOnCompletion = true;
     private bool editPrintCompletionToChat;
+    private CompletionSound editCompletionSound = CompletionSound.StandardNotification;
+    private TimerRepeatMode editRepeatMode = TimerRepeatMode.None;
+    private RepeatIntervalUnit editRepeatIntervalUnit = RepeatIntervalUnit.Hours;
+    private int editRepeatInterval = 1;
+    private int editRepeatWeekdayMask;
+    private int editRepeatDayOfMonth = 1;
+    private TimerRepeatAnchor editRepeatAnchor = TimerRepeatAnchor.OriginalSchedule;
     private TimerIcon editIcon = TimerIcon.Clock;
     private TimerColor editColor = TimerColor.Default;
     private TimerDisplayFormat editDisplayFormat = TimerDisplayFormat.Auto;
@@ -46,7 +65,7 @@ public sealed class MainWindow : Window
     {
         this.plugin = plugin;
 
-        Size = new Vector2(960, 680);
+        Size = new Vector2(1000, 720);
         SizeCondition = ImGuiCond.FirstUseEver;
         SizeConstraints = new WindowSizeConstraints
         {
@@ -82,6 +101,14 @@ public sealed class MainWindow : Window
         SelectTimer(timerId);
         IsOpen = true;
         BringToFront();
+    }
+
+    internal void UpdateShowNotesSetting(Guid timerId, bool showNotes)
+    {
+        if (!isCreatingNew && selectedTimerId == timerId)
+        {
+            editShowNotesInOverlay = showNotes;
+        }
     }
 
     private void DrawTimerList(Vector2 size)
@@ -220,6 +247,28 @@ public sealed class MainWindow : Window
         ImGui.Separator();
         ImGui.Spacing();
 
+        var footerHeight =
+            ImGui.GetFrameHeightWithSpacing()
+            + ImGui.GetTextLineHeightWithSpacing()
+            + 14f * ImGuiHelpers.GlobalScale;
+
+        using (var form = ImRaii.Child(
+                   "TimerEditorForm",
+                   new Vector2(-1f, -footerHeight),
+                   false))
+        {
+            if (form.Success)
+            {
+                DrawEditorForm();
+            }
+        }
+
+        DrawEditorFooter();
+    }
+
+    private void DrawEditorForm()
+    {
+
         DrawNameInput();
         ImGui.Spacing();
 
@@ -238,6 +287,14 @@ public sealed class MainWindow : Window
 
         ImGui.SameLine();
         ImGui.TextDisabled("The timer keeps counting when hidden from the overlay.");
+
+        if (ImGui.Checkbox("Show notes in overlay", ref editShowNotesInOverlay))
+        {
+            validationMessage = string.Empty;
+        }
+
+        ImGui.SameLine();
+        ImGui.TextDisabled("You can also toggle this by right-clicking the overlay timer.");
         ImGui.Spacing();
 
         if (ImGui.RadioButton(
@@ -260,6 +317,9 @@ public sealed class MainWindow : Window
         DrawDurationInputs();
         ImGui.Spacing();
 
+        DrawRepeatInputs();
+        ImGui.Spacing();
+
         DrawAppearanceInputs();
         ImGui.Spacing();
 
@@ -269,26 +329,40 @@ public sealed class MainWindow : Window
         DrawNotesInput();
 
         ImGui.Spacing();
-        ImGui.Separator();
         ImGui.TextDisabled("Active timers can also be shown in the persistent overlay.");
+    }
 
+    private void DrawEditorFooter()
+    {
+        ImGui.Separator();
         if (!string.IsNullOrWhiteSpace(validationMessage))
         {
             ImGui.TextColored(new Vector4(1f, 0.35f, 0.3f, 1f), validationMessage);
         }
-
-        var footerHeight = ImGui.GetFrameHeightWithSpacing() + 4f * ImGuiHelpers.GlobalScale;
-        var remainingHeight = ImGui.GetContentRegionAvail().Y;
-        if (remainingHeight > footerHeight)
+        else
         {
-            ImGui.Dummy(new Vector2(1, remainingHeight - footerHeight));
+            ImGui.TextDisabled("Save and Cancel remain available while the editor form scrolls.");
         }
 
         var buttonWidth = 120f * ImGuiHelpers.GlobalScale;
         var totalButtonWidth = buttonWidth * 2f + ImGui.GetStyle().ItemSpacing.X;
-        var cursorX = ImGui.GetCursorPosX();
+        var startX = ImGui.GetCursorPosX();
         var availableWidth = ImGui.GetContentRegionAvail().X;
-        ImGui.SetCursorPosX(cursorX + MathF.Max(0, availableWidth - totalButtonWidth));
+
+        var selectedTimer = !isCreatingNew ? GetSelectedTimer() : null;
+        using (ImRaii.Disabled(selectedTimer is null))
+        {
+            if (ImGui.Button("Restart Timer", new Vector2(buttonWidth, 0f))
+                && selectedTimer is not null
+                && plugin.RestartTimer(selectedTimer.Id))
+            {
+                SelectTimer(selectedTimer.Id);
+                validationMessage = "Timer restarted using its saved schedule.";
+            }
+        }
+
+        ImGui.SameLine();
+        ImGui.SetCursorPosX(startX + MathF.Max(buttonWidth, availableWidth - totalButtonWidth));
 
         if (ImGui.Button("Save", new Vector2(buttonWidth, 0)))
         {
@@ -360,6 +434,202 @@ public sealed class MainWindow : Window
         durationMinutes = Math.Clamp(durationMinutes, 0, 59);
 
         ImGui.Unindent(24f * ImGuiHelpers.GlobalScale);
+    }
+
+    private void DrawRepeatInputs()
+    {
+        ImGui.TextUnformatted("Repeating schedule");
+        ImGui.Separator();
+
+        var repeats = editRepeatMode != TimerRepeatMode.None;
+        if (ImGui.Checkbox("Repeat", ref repeats))
+        {
+            editRepeatMode = repeats
+                ? TimerRepeatMode.Daily
+                : TimerRepeatMode.None;
+
+            if (repeats && TryGetEndUnixSeconds(out var targetUnixSeconds, false))
+            {
+                var targetLocal =
+                    DateTimeOffset.FromUnixTimeSeconds(targetUnixSeconds).LocalDateTime;
+                editRepeatWeekdayMask = 1 << (int)targetLocal.DayOfWeek;
+                editRepeatDayOfMonth = targetLocal.Day;
+            }
+
+            validationMessage = string.Empty;
+        }
+
+        if (!repeats)
+        {
+            ImGui.SameLine();
+            ImGui.TextDisabled("This timer runs once.");
+            return;
+        }
+
+        ImGui.Indent(24f * ImGuiHelpers.GlobalScale);
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted("Frequency");
+        ImGui.SameLine(140f * ImGuiHelpers.GlobalScale);
+        ImGui.SetNextItemWidth(-1f);
+
+        if (ImGui.BeginCombo(
+                "##RepeatMode",
+                TimerSchedule.GetRepeatModeName(editRepeatMode)))
+        {
+            foreach (var mode in Enum.GetValues<TimerRepeatMode>())
+            {
+                if (mode == TimerRepeatMode.None)
+                {
+                    continue;
+                }
+
+                var selected = editRepeatMode == mode;
+                if (ImGui.Selectable(TimerSchedule.GetRepeatModeName(mode), selected))
+                {
+                    editRepeatMode = mode;
+                    validationMessage = string.Empty;
+                }
+
+                if (selected)
+                {
+                    ImGui.SetItemDefaultFocus();
+                }
+            }
+
+            ImGui.EndCombo();
+        }
+
+        switch (editRepeatMode)
+        {
+            case TimerRepeatMode.Interval:
+                DrawIntervalRepeatInputs();
+                break;
+            case TimerRepeatMode.Daily:
+                ImGui.TextDisabled("Repeats every day at the timer's scheduled time.");
+                break;
+            case TimerRepeatMode.Weekly:
+                ImGui.TextDisabled("Repeats every seven days on the same weekday and time.");
+                break;
+            case TimerRepeatMode.SelectedWeekdays:
+                DrawWeekdayRepeatInputs();
+                break;
+            case TimerRepeatMode.Monthly:
+                DrawMonthlyRepeatInputs();
+                break;
+        }
+
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted("Next repeat from");
+        ImGui.SameLine(140f * ImGuiHelpers.GlobalScale);
+        ImGui.SetNextItemWidth(-1f);
+
+        if (ImGui.BeginCombo(
+                "##RepeatAnchor",
+                TimerSchedule.GetAnchorName(editRepeatAnchor)))
+        {
+            foreach (var anchor in Enum.GetValues<TimerRepeatAnchor>())
+            {
+                var selected = editRepeatAnchor == anchor;
+                if (ImGui.Selectable(TimerSchedule.GetAnchorName(anchor), selected))
+                {
+                    editRepeatAnchor = anchor;
+                }
+
+                if (selected)
+                {
+                    ImGui.SetItemDefaultFocus();
+                }
+            }
+
+            ImGui.EndCombo();
+        }
+
+        ImGui.TextDisabled(
+            editRepeatAnchor == TimerRepeatAnchor.OriginalSchedule
+                ? "Missed occurrences are skipped without changing the original schedule."
+                : "The next occurrence is calculated from the time the alert is dismissed.");
+
+        if (TryCreateDraftSchedule(out var draftTimer))
+        {
+            ImGui.TextDisabled(
+                $"Following occurrence: {TimerSchedule.FormatNextOccurrence(draftTimer, draftTimer.EndUnixSeconds)}");
+        }
+
+        ImGui.Unindent(24f * ImGuiHelpers.GlobalScale);
+    }
+
+    private void DrawIntervalRepeatInputs()
+    {
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted("Every");
+        ImGui.SameLine(140f * ImGuiHelpers.GlobalScale);
+        ImGui.SetNextItemWidth(90f * ImGuiHelpers.GlobalScale);
+        if (ImGui.InputInt("##RepeatInterval", ref editRepeatInterval))
+        {
+            editRepeatInterval = Math.Clamp(editRepeatInterval, 1, 10000);
+        }
+
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(130f * ImGuiHelpers.GlobalScale);
+        if (ImGui.BeginCombo(
+                "##RepeatIntervalUnit",
+                TimerSchedule.GetIntervalUnitName(editRepeatIntervalUnit)))
+        {
+            foreach (var unit in Enum.GetValues<RepeatIntervalUnit>())
+            {
+                var selected = editRepeatIntervalUnit == unit;
+                if (ImGui.Selectable(TimerSchedule.GetIntervalUnitName(unit), selected))
+                {
+                    editRepeatIntervalUnit = unit;
+                }
+
+                if (selected)
+                {
+                    ImGui.SetItemDefaultFocus();
+                }
+            }
+
+            ImGui.EndCombo();
+        }
+    }
+
+    private void DrawWeekdayRepeatInputs()
+    {
+        ImGui.TextUnformatted("Days");
+        foreach (var option in WeekdayOptions)
+        {
+            var dayBit = 1 << (int)option.Day;
+            var selected = (editRepeatWeekdayMask & dayBit) != 0;
+            if (ImGui.Checkbox($"{option.Label}##RepeatDay_{option.Day}", ref selected))
+            {
+                if (selected)
+                {
+                    editRepeatWeekdayMask |= dayBit;
+                }
+                else
+                {
+                    editRepeatWeekdayMask &= ~dayBit;
+                }
+
+                validationMessage = string.Empty;
+            }
+
+            if (option.Day != DayOfWeek.Saturday)
+            {
+                ImGui.SameLine();
+            }
+        }
+    }
+
+    private void DrawMonthlyRepeatInputs()
+    {
+        ImGui.SetNextItemWidth(90f * ImGuiHelpers.GlobalScale);
+        if (ImGui.InputInt("Day of month", ref editRepeatDayOfMonth))
+        {
+            editRepeatDayOfMonth = Math.Clamp(editRepeatDayOfMonth, 1, 31);
+        }
+
+        ImGui.TextDisabled("Shorter months use their final day.");
     }
 
     private void DrawNotesInput()
@@ -514,6 +784,45 @@ public sealed class MainWindow : Window
 
         ImGui.Checkbox("Show completion popup", ref editShowCompletionPopup);
         ImGui.Checkbox("Play sound when finished", ref editPlaySoundOnCompletion);
+
+        using (ImRaii.Disabled(!editPlaySoundOnCompletion))
+        {
+            ImGui.Indent(24f * ImGuiHelpers.GlobalScale);
+            ImGui.AlignTextToFramePadding();
+            ImGui.TextUnformatted("Completion sound");
+            ImGui.SameLine(160f * ImGuiHelpers.GlobalScale);
+            ImGui.SetNextItemWidth(190f * ImGuiHelpers.GlobalScale);
+
+            if (ImGui.BeginCombo(
+                    "##CompletionSound",
+                    CompletionSounds.GetName(editCompletionSound)))
+            {
+                foreach (var sound in CompletionSounds.Options)
+                {
+                    var selected = editCompletionSound == sound;
+                    if (ImGui.Selectable(CompletionSounds.GetName(sound), selected))
+                    {
+                        editCompletionSound = sound;
+                    }
+
+                    if (selected)
+                    {
+                        ImGui.SetItemDefaultFocus();
+                    }
+                }
+
+                ImGui.EndCombo();
+            }
+
+            ImGui.SameLine();
+            if (ImGui.Button("Preview Sound"))
+            {
+                plugin.PreviewCompletionSound(editCompletionSound);
+            }
+
+            ImGui.Unindent(24f * ImGuiHelpers.GlobalScale);
+        }
+
         ImGui.Checkbox("Print chat message when finished", ref editPrintCompletionToChat);
 
         var testButtonWidth = 180f * ImGuiHelpers.GlobalScale;
@@ -538,6 +847,7 @@ public sealed class MainWindow : Window
                     editColor,
                     editShowCompletionPopup,
                     editPlaySoundOnCompletion,
+                    editCompletionSound,
                     editPrintCompletionToChat);
                 validationMessage = "Test completion alert sent.";
             }
@@ -565,9 +875,17 @@ public sealed class MainWindow : Window
         editTime = defaultTarget.ToString("HH:mm", CultureInfo.InvariantCulture);
         editIsActive = true;
         editShowInOverlay = true;
+        editShowNotesInOverlay = false;
         editShowCompletionPopup = true;
         editPlaySoundOnCompletion = true;
         editPrintCompletionToChat = false;
+        editCompletionSound = CompletionSound.StandardNotification;
+        editRepeatMode = TimerRepeatMode.None;
+        editRepeatIntervalUnit = RepeatIntervalUnit.Hours;
+        editRepeatInterval = 1;
+        editRepeatWeekdayMask = 1 << (int)defaultTarget.DayOfWeek;
+        editRepeatDayOfMonth = defaultTarget.Day;
+        editRepeatAnchor = TimerRepeatAnchor.OriginalSchedule;
         editIcon = TimerIcon.Clock;
         editColor = TimerColor.Default;
         editDisplayFormat = TimerDisplayFormat.Auto;
@@ -603,9 +921,17 @@ public sealed class MainWindow : Window
         editTime = targetLocal.ToString("HH:mm", CultureInfo.InvariantCulture);
         editIsActive = timer.IsActive;
         editShowInOverlay = timer.ShowInOverlay;
+        editShowNotesInOverlay = timer.ShowNotesInOverlay;
         editShowCompletionPopup = timer.ShowCompletionPopup;
         editPlaySoundOnCompletion = timer.PlaySoundOnCompletion;
         editPrintCompletionToChat = timer.PrintCompletionToChat;
+        editCompletionSound = timer.CompletionSound;
+        editRepeatMode = timer.RepeatMode;
+        editRepeatIntervalUnit = timer.RepeatIntervalUnit;
+        editRepeatInterval = timer.RepeatInterval;
+        editRepeatWeekdayMask = timer.RepeatWeekdayMask;
+        editRepeatDayOfMonth = timer.RepeatDayOfMonth;
+        editRepeatAnchor = timer.RepeatAnchor;
         editIcon = timer.Icon;
         editColor = timer.Color;
         editDisplayFormat = timer.DisplayFormat;
@@ -677,6 +1003,13 @@ public sealed class MainWindow : Window
             return;
         }
 
+        if (editRepeatMode == TimerRepeatMode.SelectedWeekdays
+            && (editRepeatWeekdayMask & 0x7F) == 0)
+        {
+            validationMessage = "Select at least one weekday for this repeating timer.";
+            return;
+        }
+
         if (isCreatingNew && endUnixSeconds <= DateTimeOffset.UtcNow.ToUnixTimeSeconds())
         {
             validationMessage = "A new timer must end in the future.";
@@ -692,9 +1025,20 @@ public sealed class MainWindow : Window
         timer.EndUnixSeconds = endUnixSeconds;
         timer.IsActive = editIsActive;
         timer.ShowInOverlay = editShowInOverlay;
+        timer.ShowNotesInOverlay = editShowNotesInOverlay;
         timer.ShowCompletionPopup = editShowCompletionPopup;
         timer.PlaySoundOnCompletion = editPlaySoundOnCompletion;
         timer.PrintCompletionToChat = editPrintCompletionToChat;
+        timer.CompletionSound = editCompletionSound;
+        timer.RepeatMode = editRepeatMode;
+        timer.RepeatIntervalUnit = editRepeatIntervalUnit;
+        timer.RepeatInterval = Math.Clamp(editRepeatInterval, 1, 10000);
+        timer.RepeatWeekdayMask = editRepeatWeekdayMask & 0x7F;
+        timer.RepeatDayOfMonth = Math.Clamp(editRepeatDayOfMonth, 1, 31);
+        timer.RepeatAnchor = editRepeatAnchor;
+        timer.RecurrenceAnchorUnixSeconds = endUnixSeconds;
+        timer.RestartDurationSeconds = GetDraftDurationSeconds(endUnixSeconds);
+        timer.IsSnoozed = false;
         timer.Icon = editIcon;
         timer.Color = editColor;
         timer.DisplayFormat = editDisplayFormat;
@@ -708,7 +1052,9 @@ public sealed class MainWindow : Window
         SelectTimer(timer.Id);
     }
 
-    private bool TryGetEndUnixSeconds(out long endUnixSeconds)
+    private bool TryGetEndUnixSeconds(
+        out long endUnixSeconds,
+        bool showValidation = true)
     {
         endUnixSeconds = 0;
 
@@ -722,8 +1068,12 @@ public sealed class MainWindow : Window
                     DateTimeStyles.None,
                     out var targetLocal))
             {
-                validationMessage =
-                    "Use YYYY-MM-DD for the date and HH:MM for the time.";
+                if (showValidation)
+                {
+                    validationMessage =
+                        "Use YYYY-MM-DD for the date and HH:MM for the time.";
+                }
+
                 return false;
             }
 
@@ -739,11 +1089,50 @@ public sealed class MainWindow : Window
 
         if (duration <= TimeSpan.Zero)
         {
-            validationMessage = "Duration must be longer than zero minutes.";
+            if (showValidation)
+            {
+                validationMessage = "Duration must be longer than zero minutes.";
+            }
+
             return false;
         }
 
         endUnixSeconds = DateTimeOffset.UtcNow.Add(duration).ToUnixTimeSeconds();
+        return true;
+    }
+
+    private long GetDraftDurationSeconds(long endUnixSeconds)
+    {
+        if (inputMode == TimerInputMode.Duration)
+        {
+            var duration =
+                TimeSpan.FromDays(durationDays)
+                + TimeSpan.FromHours(durationHours)
+                + TimeSpan.FromMinutes(durationMinutes);
+            return Math.Clamp((long)duration.TotalSeconds, 60, 315360000);
+        }
+
+        var remaining =
+            endUnixSeconds - DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        return Math.Clamp(remaining, 60, 315360000);
+    }
+
+    private bool TryCreateDraftSchedule(out TimerEntry draftTimer)
+    {
+        draftTimer = new TimerEntry();
+        if (!TryGetEndUnixSeconds(out var endUnixSeconds, false))
+        {
+            return false;
+        }
+
+        draftTimer.EndUnixSeconds = endUnixSeconds;
+        draftTimer.RepeatMode = editRepeatMode;
+        draftTimer.RepeatIntervalUnit = editRepeatIntervalUnit;
+        draftTimer.RepeatInterval = Math.Clamp(editRepeatInterval, 1, 10000);
+        draftTimer.RepeatWeekdayMask = editRepeatWeekdayMask & 0x7F;
+        draftTimer.RepeatDayOfMonth = Math.Clamp(editRepeatDayOfMonth, 1, 31);
+        draftTimer.RepeatAnchor = editRepeatAnchor;
+        draftTimer.RecurrenceAnchorUnixSeconds = endUnixSeconds;
         return true;
     }
 
@@ -763,9 +1152,20 @@ public sealed class MainWindow : Window
             EndUnixSeconds = source.EndUnixSeconds,
             IsActive = source.IsActive,
             ShowInOverlay = source.ShowInOverlay,
+            ShowNotesInOverlay = source.ShowNotesInOverlay,
             ShowCompletionPopup = source.ShowCompletionPopup,
             PlaySoundOnCompletion = source.PlaySoundOnCompletion,
             PrintCompletionToChat = source.PrintCompletionToChat,
+            CompletionSound = source.CompletionSound,
+            RepeatMode = source.RepeatMode,
+            RepeatIntervalUnit = source.RepeatIntervalUnit,
+            RepeatInterval = source.RepeatInterval,
+            RepeatWeekdayMask = source.RepeatWeekdayMask,
+            RepeatDayOfMonth = source.RepeatDayOfMonth,
+            RepeatAnchor = source.RepeatAnchor,
+            RecurrenceAnchorUnixSeconds = source.RecurrenceAnchorUnixSeconds,
+            RestartDurationSeconds = source.RestartDurationSeconds,
+            IsSnoozed = source.IsSnoozed,
             Icon = source.Icon,
             Color = source.Color,
             DisplayFormat = source.DisplayFormat,

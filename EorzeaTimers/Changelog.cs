@@ -4,17 +4,19 @@ namespace EorzeaTimers;
 
 internal static class Changelog
 {
-    internal const string Title = "Stage 5 - Completion Alerts";
+    internal const string Title = "Stage 6 - Repeating Timers and Snooze";
 
     internal static IReadOnlyList<string> Latest { get; } =
     [
-        "Added a custom completion popup with a Dismiss button.",
-        "Added per-timer popup, sound, and chat-message options.",
-        "Added a Test Completion Alert button that uses the current editor settings.",
-        "Added duplicate-alert protection so each timer alerts only once per completion.",
-        "Added a queue for simultaneous timer completions and limited each completion batch to one sound.",
-        "Existing completed timers do not unexpectedly alert when updating the plugin.",
-        "Fixed the overlay moving while dragging its resize grip.",
-        "Removed the temporary v0.4.2.0 4/20 image.",
+        "Added repeating timers with interval, daily, weekly, selected-weekday, and monthly schedules.",
+        "Added original-schedule and dismissal-time repeat behavior.",
+        "Added preset and custom snooze durations to completion popups.",
+        "Added a manual Restart Timer action and next-occurrence previews.",
+        "Added twelve selectable FFXIV chat sounds plus the existing standard notification.",
+        "Added a Preview Sound button and saved sound choice for every timer.",
+        "Added per-timer overlay notes and right-click note toggling.",
+        "Migrated the old Compact/Detailed choice into individual timer note settings.",
+        "Reworked the editor so Save, Cancel, and Restart remain visible while its settings scroll.",
+        "Repeating and snoozed timers persist through restarts, while missed repeats advance quietly.",
     ];
 }

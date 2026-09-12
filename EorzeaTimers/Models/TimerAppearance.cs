@@ -136,19 +136,21 @@ public static class TimerAppearance
 
         if (remaining <= TimeSpan.Zero)
         {
-            return "Complete";
+            return AddScheduleStatus(timer, "Complete");
         }
 
         if (timer.DisplayFormat == TimerDisplayFormat.TargetDateAndTime)
         {
-            return target.LocalDateTime.ToString("MMM d, yyyy h:mm tt");
+            return AddScheduleStatus(
+                timer,
+                target.LocalDateTime.ToString("MMM d, yyyy h:mm tt"));
         }
 
         var totalDays = (int)remaining.TotalDays;
         var totalHours = (long)remaining.TotalHours;
         var totalMinutes = (long)remaining.TotalMinutes;
 
-        return timer.DisplayFormat switch
+        var formatted = timer.DisplayFormat switch
         {
             TimerDisplayFormat.DaysAndClock =>
                 $"{totalDays}d {remaining.Hours:00}:{remaining.Minutes:00}:{remaining.Seconds:00}",
@@ -163,6 +165,14 @@ public static class TimerAppearance
                 $"{totalHours:00}:{remaining.Minutes:00}:{remaining.Seconds:00}",
             _ => $"{totalMinutes:00}:{remaining.Seconds:00}",
         };
+
+        return AddScheduleStatus(timer, formatted);
+    }
+
+    private static string AddScheduleStatus(TimerEntry timer, string formatted)
+    {
+        var status = TimerSchedule.GetStatusText(timer);
+        return status.Length == 0 ? formatted : $"{status} · {formatted}";
     }
 
     private static string FormatWords(TimeSpan remaining)

@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.6.0.0 - Stage 6: Repeating Timers and Snooze
+
+- Added custom-interval, daily, weekly, selected-weekday, and monthly repeating schedules.
+- Added a choice between preserving the original schedule and scheduling from dismissal time.
+- Added preset snooze choices for 5, 10, 15, 30, and 60 minutes.
+- Added custom snooze durations from 1 minute through 7 days.
+- Added a Snooze button to completion popups.
+- Added a manual Restart Timer action using the timer's saved schedule or duration.
+- Added a following-occurrence preview to repeating timer settings.
+- Added twelve selectable FFXIV chat sound effects while retaining the existing standard notification.
+- Added a Preview Sound button to the timer editor.
+- Each timer now saves its own completion sound.
+- Added per-timer Show notes in overlay settings.
+- Right-clicking an interactive overlay timer now toggles its notes without opening the editor.
+- Overlay notes use smaller, dimmer text and do not add empty space when no note exists.
+- Existing Detailed-mode users automatically keep notes visible on their existing timers.
+- Removed the global Compact/Detailed selector after migrating it to per-timer settings.
+- Reworked the timer editor into a scrolling form with a fixed footer.
+- Save, Cancel, and Restart now remain visible at the default window size.
+- Repeating and snoozed timer state persists through logout, game restart, and plugin updates.
+- Missed repeating occurrences advance quietly to the next future occurrence after login.
+- Several timers completing together continue to share one immediate sound.
+
 ## 0.5.0.0 - Stage 5: Completion Alerts
 
 - Added a custom completion popup with a Dismiss button.

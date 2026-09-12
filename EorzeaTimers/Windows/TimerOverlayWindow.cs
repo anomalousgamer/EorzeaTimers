@@ -204,14 +204,15 @@ public sealed class TimerOverlayWindow : Window
     private void DrawTimerRow(TimerEntry timer)
     {
         var configuration = plugin.Configuration;
-        var detailed = configuration.OverlayRowStyle == OverlayRowStyle.Detailed;
+        var showNotes =
+            timer.ShowNotesInOverlay && !string.IsNullOrWhiteSpace(timer.Notes);
         var remainingText = TimerAppearance.FormatTimer(timer);
         var rowStart = ImGui.GetCursorPos();
         var globalScale = ImGuiHelpers.GlobalScale;
         var lineHeight = ImGui.GetTextLineHeight();
         var padding = ImGui.GetStyle().FramePadding;
-        var rowHeight = detailed
-            ? lineHeight * 2f + padding.Y * 3f
+        var rowHeight = showNotes
+            ? lineHeight * 1.82f + padding.Y * 3f
             : lineHeight + padding.Y * 2f;
         var rowWidth = MathF.Max(1f, ImGui.GetContentRegionAvail().X);
 
@@ -270,18 +271,14 @@ public sealed class TimerOverlayWindow : Window
         ImGui.SetCursorPos(new Vector2(remainingX, nameY));
         ImGui.TextColored(new Vector4(0.95f, 0.88f, 0.70f, 1f), remainingText);
 
-        if (detailed)
+        if (showNotes)
         {
             ImGui.SetCursorPos(
                 new Vector2(textStartX, nameY + lineHeight + padding.Y * 0.5f));
-            if (string.IsNullOrWhiteSpace(timer.Notes))
-            {
-                ImGui.TextDisabled("No notes");
-            }
-            else
-            {
-                ImGui.TextDisabled(timer.Notes);
-            }
+            var normalScale = Math.Clamp(configuration.OverlayScale, 0.75f, 2f);
+            ImGui.SetWindowFontScale(normalScale * 0.82f);
+            ImGui.TextDisabled(timer.Notes);
+            ImGui.SetWindowFontScale(normalScale);
         }
 
         ImGui.SetCursorPos(rowEnd);
@@ -324,11 +321,25 @@ public sealed class TimerOverlayWindow : Window
 
         if (canInteract
             && timerId.HasValue
+            && ImGui.IsItemHovered()
+            && ImGui.IsMouseClicked(ImGuiMouseButton.Right))
+        {
+            plugin.ToggleTimerNotes(timerId.Value);
+        }
+
+        if (canInteract
+            && timerId.HasValue
             && ImGui.IsItemDeactivated()
             && ImGui.IsItemHovered()
             && !rowDragOccurred)
         {
             plugin.OpenTimer(timerId.Value);
+        }
+
+        if (canInteract && timerId.HasValue && ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(
+                "Left-click to edit. Right-click to show or hide notes. Drag to move.");
         }
     }
 
