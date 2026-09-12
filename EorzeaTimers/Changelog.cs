@@ -4,13 +4,17 @@ namespace EorzeaTimers;
 
 internal static class Changelog
 {
-    internal const string Title = "Hotfix 0.4.2.0 - Equal Overlay Rows";
+    internal const string Title = "Stage 5 - Completion Alerts";
 
     internal static IReadOnlyList<string> Latest { get; } =
     [
-        "Fixed the resize grip making the bottom timer appear taller than the others.",
-        "The resize grip now floats inside the existing bottom-right corner without adding layout height.",
-        "The grip remains subtle until hovered and is still easy to drag.",
-        "Added a temporary 0.4.2.0-only 4/20 joke image to the main plugin window.",
+        "Added a custom completion popup with a Dismiss button.",
+        "Added per-timer popup, sound, and chat-message options.",
+        "Added a Test Completion Alert button that uses the current editor settings.",
+        "Added duplicate-alert protection so each timer alerts only once per completion.",
+        "Added a queue for simultaneous timer completions and limited each completion batch to one sound.",
+        "Existing completed timers do not unexpectedly alert when updating the plugin.",
+        "Fixed the overlay moving while dragging its resize grip.",
+        "Removed the temporary v0.4.2.0 4/20 image.",
     ];
 }

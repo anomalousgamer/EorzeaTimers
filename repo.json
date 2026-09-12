@@ -3,9 +3,9 @@
     "Author": "Anomaly",
     "Name": "Eorzea Timers",
     "Punchline": "Create and track personalized timers in FFXIV.",
-    "Description": "Create persistent, personalized countdown timers with configurable icons, colors, formats, and an in-game overlay.",
+    "Description": "Create persistent, personalized countdown timers with configurable icons, colors, formats, completion alerts, and an in-game overlay.",
     "InternalName": "EorzeaTimers",
-    "AssemblyVersion": "0.4.2.0",
+    "AssemblyVersion": "0.5.0.0",
     "RepoUrl": "https://github.com/anomalousgamer/EorzeaTimers",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 15,
@@ -17,9 +17,9 @@
     "IsHide": false,
     "IsTestingExclusive": false,
     "DownloadCount": 0,
-    "LastUpdate": "1788909492",
-    "Changelog": "Hotfix 0.4.2.0 - Equal Overlay Rows\n- Fixed the resize grip making the bottom timer appear taller than the others.\n- The resize grip now floats inside the existing bottom-right corner without adding layout height.\n- The grip remains subtle until hovered and is still easy to drag.\n- Added a temporary 0.4.2.0-only 4/20 joke image to the main plugin window.",
-    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.4.2.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.4.2.0/latest.zip"
+    "LastUpdate": "1789174614",
+    "Changelog": "Stage 5 - Completion Alerts\n- Added a custom completion popup with a Dismiss button.\n- Added per-timer popup, sound, and chat-message options.\n- Added a Test Completion Alert button.\n- Added duplicate-alert protection and queued simultaneous completions.\n- Existing completed timers do not alert unexpectedly after updating.\n- Fixed the overlay moving while dragging its resize grip.\n- Removed the temporary v0.4.2.0 4/20 image.",
+    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.5.0.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.5.0.0/latest.zip"
   }
 ]

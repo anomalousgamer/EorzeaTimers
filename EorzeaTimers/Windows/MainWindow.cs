@@ -11,9 +11,6 @@ namespace EorzeaTimers.Windows;
 
 public sealed class MainWindow : Window
 {
-    private const string FourTwentyLeafResource =
-        "EorzeaTimers.Assets.FourTwentyLeaf.png";
-
     private enum TimerInputMode
     {
         TargetDateTime,
@@ -32,6 +29,9 @@ public sealed class MainWindow : Window
     private string editTime = string.Empty;
     private bool editIsActive = true;
     private bool editShowInOverlay = true;
+    private bool editShowCompletionPopup = true;
+    private bool editPlaySoundOnCompletion = true;
+    private bool editPrintCompletionToChat;
     private TimerIcon editIcon = TimerIcon.Clock;
     private TimerColor editColor = TimerColor.Default;
     private TimerDisplayFormat editDisplayFormat = TimerDisplayFormat.Auto;
@@ -66,8 +66,6 @@ public sealed class MainWindow : Window
 
     public override void Draw()
     {
-        DrawFourTwentyJoke();
-
         var available = ImGui.GetContentRegionAvail();
         var spacing = ImGui.GetStyle().ItemSpacing.X;
         var listWidth = MathF.Max(260f * ImGuiHelpers.GlobalScale, available.X * 0.37f);
@@ -77,33 +75,6 @@ public sealed class MainWindow : Window
         ImGui.SameLine(0, spacing);
 
         DrawEditor(new Vector2(MathF.Max(340f, available.X - listWidth - spacing), available.Y));
-    }
-
-    private static void DrawFourTwentyJoke()
-    {
-        // Temporary v0.4.2.0 joke. Remove this method, its Draw() call, the
-        // embedded resource, and the TextureProvider service next release.
-        var texture = Plugin.TextureProvider
-            .GetFromManifestResource(typeof(Plugin).Assembly, FourTwentyLeafResource)
-            .GetWrapOrDefault();
-
-        if (texture is null)
-        {
-            return;
-        }
-
-        var imageSize = 56f * ImGuiHelpers.GlobalScale;
-        var availableWidth = ImGui.GetContentRegionAvail().X;
-        var startX = ImGui.GetCursorPosX();
-        ImGui.SetCursorPosX(startX + MathF.Max(0f, (availableWidth - imageSize) * 0.5f));
-        ImGui.Image(texture.Handle, new Vector2(imageSize, imageSize));
-
-        if (ImGui.IsItemHovered())
-        {
-            ImGui.SetTooltip("Eorzea Timers 0.4.2.0 — nice.");
-        }
-
-        ImGui.Spacing();
     }
 
     internal void OpenTimer(Guid timerId)
@@ -290,6 +261,9 @@ public sealed class MainWindow : Window
         ImGui.Spacing();
 
         DrawAppearanceInputs();
+        ImGui.Spacing();
+
+        DrawCompletionAlertInputs();
         ImGui.Spacing();
 
         DrawNotesInput();
@@ -533,6 +507,46 @@ public sealed class MainWindow : Window
         }
     }
 
+    private void DrawCompletionAlertInputs()
+    {
+        ImGui.TextUnformatted("Completion alerts");
+        ImGui.Separator();
+
+        ImGui.Checkbox("Show completion popup", ref editShowCompletionPopup);
+        ImGui.Checkbox("Play sound when finished", ref editPlaySoundOnCompletion);
+        ImGui.Checkbox("Print chat message when finished", ref editPrintCompletionToChat);
+
+        var testButtonWidth = 180f * ImGuiHelpers.GlobalScale;
+        if (ImGui.Button("Test Completion Alert", new Vector2(testButtonWidth, 0)))
+        {
+            if (!editShowCompletionPopup
+                && !editPlaySoundOnCompletion
+                && !editPrintCompletionToChat)
+            {
+                validationMessage = "Enable at least one completion alert option to test it.";
+            }
+            else
+            {
+                var testName = string.IsNullOrWhiteSpace(editName)
+                    ? "New Timer"
+                    : editName.Trim();
+
+                plugin.TestCompletionAlert(
+                    testName,
+                    editNotes.Trim(),
+                    editIcon,
+                    editColor,
+                    editShowCompletionPopup,
+                    editPlaySoundOnCompletion,
+                    editPrintCompletionToChat);
+                validationMessage = "Test completion alert sent.";
+            }
+        }
+
+        ImGui.SameLine();
+        ImGui.TextDisabled("Uses the current unsaved settings.");
+    }
+
     private void BeginNewTimer()
     {
         if (!isCreatingNew)
@@ -551,6 +565,9 @@ public sealed class MainWindow : Window
         editTime = defaultTarget.ToString("HH:mm", CultureInfo.InvariantCulture);
         editIsActive = true;
         editShowInOverlay = true;
+        editShowCompletionPopup = true;
+        editPlaySoundOnCompletion = true;
+        editPrintCompletionToChat = false;
         editIcon = TimerIcon.Clock;
         editColor = TimerColor.Default;
         editDisplayFormat = TimerDisplayFormat.Auto;
@@ -586,6 +603,9 @@ public sealed class MainWindow : Window
         editTime = targetLocal.ToString("HH:mm", CultureInfo.InvariantCulture);
         editIsActive = timer.IsActive;
         editShowInOverlay = timer.ShowInOverlay;
+        editShowCompletionPopup = timer.ShowCompletionPopup;
+        editPlaySoundOnCompletion = timer.PlaySoundOnCompletion;
+        editPrintCompletionToChat = timer.PrintCompletionToChat;
         editIcon = timer.Icon;
         editColor = timer.Color;
         editDisplayFormat = timer.DisplayFormat;
@@ -672,6 +692,9 @@ public sealed class MainWindow : Window
         timer.EndUnixSeconds = endUnixSeconds;
         timer.IsActive = editIsActive;
         timer.ShowInOverlay = editShowInOverlay;
+        timer.ShowCompletionPopup = editShowCompletionPopup;
+        timer.PlaySoundOnCompletion = editPlaySoundOnCompletion;
+        timer.PrintCompletionToChat = editPrintCompletionToChat;
         timer.Icon = editIcon;
         timer.Color = editColor;
         timer.DisplayFormat = editDisplayFormat;
@@ -740,6 +763,9 @@ public sealed class MainWindow : Window
             EndUnixSeconds = source.EndUnixSeconds,
             IsActive = source.IsActive,
             ShowInOverlay = source.ShowInOverlay,
+            ShowCompletionPopup = source.ShowCompletionPopup,
+            PlaySoundOnCompletion = source.PlaySoundOnCompletion,
+            PrintCompletionToChat = source.PrintCompletionToChat,
             Icon = source.Icon,
             Color = source.Color,
             DisplayFormat = source.DisplayFormat,

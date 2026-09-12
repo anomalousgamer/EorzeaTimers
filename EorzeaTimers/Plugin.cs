@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
@@ -6,6 +7,7 @@ using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using EorzeaTimers.Models;
 using EorzeaTimers.Windows;
+using FFXIVClientStructs.FFXIV.Client.UI;
 
 namespace EorzeaTimers;
 
@@ -13,6 +15,7 @@ public sealed class Plugin : IDalamudPlugin
 {
     private const string CommandName = "/etimers";
     private const string ChatTag = "Eorzea Timers";
+    private const uint CompletionSoundEffectId = 23;
     private static readonly TimeSpan ChangelogLoginDelay = TimeSpan.FromSeconds(3);
 
     internal static string CurrentVersion { get; } =
@@ -45,9 +48,6 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     internal static IChatGui ChatGui { get; private set; } = null!;
 
-    [PluginService]
-    internal static ITextureProvider TextureProvider { get; private set; } = null!;
-
     internal Configuration Configuration { get; }
 
     private readonly WindowSystem windowSystem = new("EorzeaTimers");
@@ -55,6 +55,8 @@ public sealed class Plugin : IDalamudPlugin
     private readonly ChangelogWindow changelogWindow;
     private readonly TimerOverlayWindow overlayWindow;
     private readonly OverlaySettingsWindow overlaySettingsWindow;
+    private readonly CompletionAlertWindow completionAlertWindow;
+    private readonly HashSet<Guid> completionAlertedTimerIds = new();
 
     private bool changelogPendingAfterLogin;
     private DateTime? changelogEligibleAtUtc;
@@ -69,15 +71,26 @@ public sealed class Plugin : IDalamudPlugin
             Configuration.Save();
         }
 
+        var loadedAtUnixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        foreach (var timer in Configuration.Timers)
+        {
+            if (timer.EndUnixSeconds <= loadedAtUnixSeconds)
+            {
+                completionAlertedTimerIds.Add(timer.Id);
+            }
+        }
+
         mainWindow = new MainWindow(this);
         changelogWindow = new ChangelogWindow(this);
         overlayWindow = new TimerOverlayWindow(this);
         overlaySettingsWindow = new OverlaySettingsWindow(this, overlayWindow);
+        completionAlertWindow = new CompletionAlertWindow();
 
         windowSystem.AddWindow(mainWindow);
         windowSystem.AddWindow(changelogWindow);
         windowSystem.AddWindow(overlayWindow);
         windowSystem.AddWindow(overlaySettingsWindow);
+        windowSystem.AddWindow(completionAlertWindow);
 
         changelogPendingAfterLogin =
             !string.Equals(
@@ -261,6 +274,7 @@ public sealed class Plugin : IDalamudPlugin
         ChatGui.Print("Lock prevents moving and resizing but still allows timer clicks.", ChatTag);
         ChatGui.Print("Click-through passes mouse input to the game and disables overlay interaction.", ChatTag);
         ChatGui.Print("Use Show in overlay in the timer editor to include or exclude each timer.", ChatTag);
+        ChatGui.Print("Completion popup, sound, chat, and test options are set per timer.", ChatTag);
     }
 
     private void OpenMainWindow()
@@ -276,6 +290,31 @@ public sealed class Plugin : IDalamudPlugin
     internal void OpenTimer(Guid timerId)
     {
         mainWindow.OpenTimer(timerId);
+    }
+
+    internal void TestCompletionAlert(
+        string name,
+        string notes,
+        TimerIcon icon,
+        TimerColor color,
+        bool showPopup,
+        bool playSound,
+        bool printToChat)
+    {
+        if (showPopup)
+        {
+            completionAlertWindow.Enqueue(name, notes, icon, color, true);
+        }
+
+        if (printToChat)
+        {
+            ChatGui.Print($"Test alert: {name} has finished.", ChatTag);
+        }
+
+        if (playSound)
+        {
+            PlayCompletionSound();
+        }
     }
 
     internal void ApplyUiHideSettings()
@@ -295,6 +334,8 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnFrameworkUpdate(IFramework framework)
     {
+        UpdateCompletionAlerts();
+
         if (!changelogPendingAfterLogin)
         {
             return;
@@ -317,5 +358,76 @@ public sealed class Plugin : IDalamudPlugin
         changelogWindow.IsOpen = true;
         changelogPendingAfterLogin = false;
         changelogEligibleAtUtc = null;
+    }
+
+    private void UpdateCompletionAlerts()
+    {
+        if (!PlayerState.IsLoaded)
+        {
+            return;
+        }
+
+        var nowUnixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var existingTimerIds = new HashSet<Guid>();
+        var newlyCompleted = new List<TimerEntry>();
+
+        foreach (var timer in Configuration.Timers)
+        {
+            existingTimerIds.Add(timer.Id);
+
+            if (timer.EndUnixSeconds > nowUnixSeconds)
+            {
+                completionAlertedTimerIds.Remove(timer.Id);
+                continue;
+            }
+
+            if (timer.IsActive && completionAlertedTimerIds.Add(timer.Id))
+            {
+                newlyCompleted.Add(timer);
+            }
+        }
+
+        completionAlertedTimerIds.RemoveWhere(
+            timerId => !existingTimerIds.Contains(timerId));
+
+        if (newlyCompleted.Count == 0)
+        {
+            return;
+        }
+
+        var shouldPlaySound = false;
+        foreach (var timer in newlyCompleted)
+        {
+            if (timer.ShowCompletionPopup)
+            {
+                completionAlertWindow.Enqueue(timer);
+            }
+
+            if (timer.PrintCompletionToChat)
+            {
+                ChatGui.Print($"Timer complete: {timer.Name} has finished.", ChatTag);
+            }
+
+            shouldPlaySound |= timer.PlaySoundOnCompletion;
+        }
+
+        // Several timers completing on the same update share one sound so the
+        // user gets a clear alert instead of several effects playing together.
+        if (shouldPlaySound)
+        {
+            PlayCompletionSound();
+        }
+    }
+
+    private static unsafe void PlayCompletionSound()
+    {
+        try
+        {
+            UIGlobals.PlaySoundEffect(CompletionSoundEffectId);
+        }
+        catch (Exception exception)
+        {
+            Log.Warning(exception, "Could not play the timer completion sound.");
+        }
     }
 }

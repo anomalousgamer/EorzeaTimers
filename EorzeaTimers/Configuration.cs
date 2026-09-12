@@ -9,7 +9,7 @@ namespace EorzeaTimers;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 6;
+    public int Version { get; set; } = 7;
 
     public List<TimerEntry> Timers { get; set; } = new();
 
@@ -59,6 +59,7 @@ public sealed class Configuration : IPluginConfiguration
     {
         var changed = false;
         var migratingToVersionSix = Version < 6;
+        var migratingToVersionSeven = Version < 7;
 
         if (migratingToVersionSix)
         {
@@ -127,6 +128,14 @@ public sealed class Configuration : IPluginConfiguration
             if (migratingToVersionSix && !timer.ShowInOverlay)
             {
                 timer.ShowInOverlay = true;
+                changed = true;
+            }
+
+            if (migratingToVersionSeven)
+            {
+                timer.ShowCompletionPopup = true;
+                timer.PlaySoundOnCompletion = true;
+                timer.PrintCompletionToChat = false;
                 changed = true;
             }
 
@@ -204,9 +213,9 @@ public sealed class Configuration : IPluginConfiguration
             changed = true;
         }
 
-        if (Version != 6)
+        if (Version != 7)
         {
-            Version = 6;
+            Version = 7;
             changed = true;
         }
 

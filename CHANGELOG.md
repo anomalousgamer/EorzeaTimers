@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.0.0 - Stage 5: Completion Alerts
+
+- Added a custom completion popup with a Dismiss button.
+- Added per-timer options for completion popup, sound, and chat messages.
+- Added a Test Completion Alert button that uses the current unsaved editor settings.
+- Added duplicate-alert protection so each timer alerts only once per completion.
+- Editing a completed timer back into the future makes it eligible to alert again.
+- Added a queue that displays simultaneous completion popups one at a time.
+- Several timers completing together now share one sound instead of playing several sounds simultaneously.
+- Existing completed timers do not unexpectedly alert when the plugin loads after updating.
+- Fixed the overlay moving while dragging its bottom-right resize grip.
+- Removed the temporary v0.4.2.0 4/20 image and its texture-loading code.
+
 ## 0.4.2.0 - Hotfix: Equal Overlay Rows
 
 - Fixed the resize grip making the bottom timer appear taller than the others.

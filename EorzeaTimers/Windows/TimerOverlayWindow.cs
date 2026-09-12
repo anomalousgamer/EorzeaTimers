@@ -101,13 +101,9 @@ public sealed class TimerOverlayWindow : Window
             | ImGuiWindowFlags.NoScrollWithMouse
             | ImGuiWindowFlags.NoCollapse
             | ImGuiWindowFlags.NoResize
+            | ImGuiWindowFlags.NoMove
             | ImGuiWindowFlags.NoSavedSettings
             | ImGuiWindowFlags.NoTitleBar;
-
-        if (configuration.OverlayLocked || configuration.OverlayClickThrough)
-        {
-            Flags |= ImGuiWindowFlags.NoMove;
-        }
 
         if (configuration.OverlayClickThrough)
         {

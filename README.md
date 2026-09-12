@@ -2,14 +2,18 @@
 
 A customizable timer plugin for FFXIV and Dalamud.
 
-## Version 0.4.2.0
+## Version 0.5.0.0
 
-Hotfix 0.4.2.0 corrects the visual spacing caused by the overlay resize grip.
+Stage 5 makes timers actively notify the player when they finish.
 
-- Every overlay timer row now has matching visual height.
-- The resize grip floats inside the existing bottom-right corner instead of adding extra space below the final timer.
-- The grip stays subtle until hovered and remains draggable.
-- A temporary 0.4.2.0-only 4/20 joke image appears in the main plugin window.
+- Show a custom completion popup with a Dismiss button.
+- Choose popup, sound, and chat-message alerts independently for every timer.
+- Test completion alerts directly from the timer editor before saving.
+- Queue several completed timers and display them one at a time.
+- Prevent a completed timer from alerting more than once.
+- Avoid unexpected alerts from timers that were already complete when the plugin loaded.
+- Keep the overlay stationary while dragging only the resize grip.
+- Remove the temporary v0.4.2.0 4/20 image.
 
 ## Current Features
 
@@ -30,6 +34,11 @@ Hotfix 0.4.2.0 corrects the visual spacing caused by the overlay resize grip.
 - Per-timer Show in overlay controls.
 - A floating bottom-right overlay width resize grip and width presets.
 - A subtle pulsing border around completed overlay timers.
+- Per-timer completion popup, sound, and chat-message settings.
+- A completion-alert test button that uses the current editor settings.
+- Queued completion popups with a Dismiss button.
+- Duplicate-alert prevention and safe handling of simultaneous completions.
+- Existing completed timers are ignored when the plugin first loads.
 - Automatic migration of timers created in earlier releases.
 - Safe handling of completed and deleted timers.
 - A per-version changelog shown three seconds after the character is fully loaded.
@@ -42,8 +51,7 @@ Hotfix 0.4.2.0 corrects the visual spacing caused by the overlay resize grip.
 - The `/etimers help` command for commands and overlay guidance.
 - The `/etimers changes` command for reopening the changelog.
 
-Later releases will add completion alerts, repeating timers, and game-linked
-timer sources.
+Later releases will add snooze controls, repeating timers, and game-linked timer sources.
 
 ## Development build
 

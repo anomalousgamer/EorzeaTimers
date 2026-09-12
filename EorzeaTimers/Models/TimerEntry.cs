@@ -17,6 +17,12 @@ public sealed class TimerEntry
 
     public bool ShowInOverlay { get; set; } = true;
 
+    public bool ShowCompletionPopup { get; set; } = true;
+
+    public bool PlaySoundOnCompletion { get; set; } = true;
+
+    public bool PrintCompletionToChat { get; set; }
+
     public TimerIcon Icon { get; set; } = TimerIcon.Clock;
 
     public TimerColor Color { get; set; } = TimerColor.Default;
