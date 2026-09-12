@@ -2,28 +2,37 @@
 
 A customizable timer plugin for FFXIV and Dalamud.
 
-## Version 0.6.0.0
+## Version 0.7.0.0
 
-Stage 6 adds repeating schedules, snooze controls, individual overlay notes, and selectable completion sounds.
+Stage 7 adds the first game-linked timer source while also including the editor footer improvements originally planned for 0.6.1.0.
 
-- Repeat timers at a custom interval, daily, weekly, on selected weekdays, or monthly.
-- Preserve the original schedule or calculate the next occurrence from dismissal time.
-- Snooze completion alerts for preset or custom durations.
-- Restart a saved timer manually and preview its following occurrence.
-- Choose from the existing notification sound and twelve FFXIV chat sound effects.
-- Preview a timer's selected sound before saving.
-- Show notes separately for each overlay timer and toggle them with right-click.
-- Keep Save, Cancel, and Restart visible while the editor settings scroll.
-- Advance missed repeating timers quietly after login instead of producing old alerts.
+- Add a Housing Lottery timer that automatically follows FFXIV's recurring five-day entry and four-day results schedule.
+- See the current housing phase and the exact local time of the next transition.
+- Keep the linked target protected while still customizing the timer's name, notes, icon, color, display, alerts, sounds, and overlay visibility.
+- Recalculate linked timer targets automatically at startup, periodically, and when the housing phase changes.
+- Convert a linked timer to a normal manual timer while preserving its current target.
+- Identify linked timers in both the timer manager and overlay.
+- Snooze linked alerts without permanently breaking their game-schedule connection.
+- Use context-sensitive Save, Cancel, Revert Changes, and Close controls.
+
+The Housing Lottery source is calculated from the known FFXIV housing cycle. It does not use fragile memory offsets and does not read a character's private lottery-entry status.
+
+Alert volume above 100% is experimental. FFXIV may clamp louder values or introduce distortion depending on the selected sound and the user's game audio settings.
 
 ## Current Features
 
 - Multiple persistent manual countdown timers.
+- A game-linked Housing Lottery countdown with automatic phase changes.
+- Separate Manual Timers and Game-linked Timers sections.
 - Add, edit, duplicate, delete, enable, and disable controls.
 - Timer names, optional notes, stable unique IDs, icons, colors, and display formats.
-- Target date/time or relative duration input.
+- Target date/time or relative duration input for manual timers.
+- Read-only automatic targets for game-linked timers.
+- Conversion from a linked timer to a manual timer.
+- Automatic linked-timer schedule calculation with no manual synchronization required.
 - Automatic and user-selected countdown formats.
 - A persistent in-game overlay for active timers.
+- Linked-source indicators in the manager and overlay.
 - Per-timer overlay notes rendered beneath timer names.
 - Movable positioning with automatic position saving.
 - Adjustable overlay scale, width, and background opacity.
@@ -42,15 +51,18 @@ Stage 6 adds repeating schedules, snooze controls, individual overlay notes, and
 - Preset and custom snooze durations.
 - The existing standard notification plus twelve selectable FFXIV chat sounds.
 - Sound previewing directly from the timer editor.
-- Custom-interval, daily, weekly, selected-weekday, and monthly repeating timers.
+- Per-timer alert volume from 0% through 200%, with live previewing of unsaved volume changes.
+- Custom-interval, daily, weekly, selected-weekday, and monthly repeating manual timers.
 - Original-schedule and dismissal-time recurrence behavior.
 - Manual timer restarting and following-occurrence previews.
 - Persistent repeat and snooze state.
 - Quiet advancement past occurrences missed while logged out.
+- Linked-timer snoozing that restores the current game target after dismissal.
 - Duplicate-alert prevention and safe handling of simultaneous completions.
 - Existing completed timers are ignored when the plugin first loads.
 - Automatic migration of timers created in earlier releases.
 - Safe handling of completed and deleted timers.
+- A fixed editor footer with context-sensitive Save, Cancel, Revert Changes, Close, and manual-timer Restart controls.
 - A per-version changelog shown three seconds after the character is fully loaded.
 - The `/etimers` command for the timer manager.
 - The `/etimers overlay` command for opening overlay settings.
@@ -61,7 +73,7 @@ Stage 6 adds repeating schedules, snooze controls, individual overlay notes, and
 - The `/etimers help` command for commands and overlay guidance.
 - The `/etimers changes` command for reopening the changelog.
 
-Later releases will add game-linked timer sources, including selected FFXIV schedules.
+Later releases can add more FFXIV schedule sources through the game-linked timer system introduced here.
 
 ## Development build
 

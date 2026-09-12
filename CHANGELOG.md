@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.7.0.0 - Stage 7: Game-linked Housing Timer
+
+- Combined the planned 0.6.1.0 editor improvements and Stage 7 into one 0.7.0.0 release.
+- Added a manual or game-linked source type to every saved timer.
+- Added the Housing Lottery as the first game-linked timer source.
+- Housing timers automatically follow FFXIV's recurring five-day entry and four-day results schedule.
+- Added separate Manual Timers and Game-linked Timers sections to the timer manager.
+- Added a one-click Housing Timer creator with a house icon and gold color defaults.
+- Added a read-only linked-source panel showing the current housing phase and next transition in local time.
+- Kept name, notes, enabled state, overlay visibility, overlay notes, icon, color, display format, popup, sound, and chat settings editable for linked timers.
+- Added automatic schedule calculation at startup, at phase transitions, and periodically while the plugin is running.
+- Linked timers require no manual synchronization command or button.
+- Added a Convert to Manual action that retains the linked timer's current target.
+- Duplicating a linked timer creates a manual snapshot so only one timer owns each linked source.
+- Added linked-source indicators to the timer manager and overlay.
+- Added linked phase text to countdown displays.
+- Preserved a linked timer's game target separately while an alert is snoozed.
+- Linked completion popups remain available after the source advances to its next phase.
+- Prevented initial schedule calculation from producing false completion alerts.
+- Existing timers migrate as manual timers without losing their settings.
+- Saving, reverting, closing, deleting, and duplicating continue to preserve timer configuration safely.
+- Save is now disabled when an existing timer has no unsaved changes.
+- Cancel remains available while creating a timer.
+- Cancel becomes Revert Changes when an existing timer has unsaved edits.
+- Cancel becomes Close when an existing timer has no unsaved edits.
+- Revert Changes restores the last saved timer values.
+- Saving, reverting, and restarting now show a clear editor status message.
+- Added a separate 0% through 200% completion-alert volume slider to every timer.
+- Preview Sound and Test Completion Alert use the current unsaved volume value immediately.
+- Actual timer completions use the volume saved for that timer.
+- Existing timers migrate to 100% alert volume without losing their other settings.
+- Values above 100% are marked as an experimental boost because FFXIV may clamp or distort them.
+
 ## 0.6.0.0 - Stage 6: Repeating Timers and Snooze
 
 - Added custom-interval, daily, weekly, selected-weekday, and monthly repeating schedules.

@@ -7,6 +7,7 @@ using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using EorzeaTimers.Models;
 using EorzeaTimers.Windows;
+using FFXIVClientStructs.FFXIV.Client.Sound;
 using FFXIVClientStructs.FFXIV.Client.UI;
 
 namespace EorzeaTimers;
@@ -17,6 +18,7 @@ public sealed class Plugin : IDalamudPlugin
     private const string ChatTag = "Eorzea Timers";
     private const uint CompletionSoundEffectId = 23;
     private static readonly TimeSpan ChangelogLoginDelay = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan GameTimerRefreshInterval = TimeSpan.FromMinutes(1);
 
     internal static string CurrentVersion { get; } =
         typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "Unknown";
@@ -60,6 +62,7 @@ public sealed class Plugin : IDalamudPlugin
 
     private bool changelogPendingAfterLogin;
     private DateTime? changelogEligibleAtUtc;
+    private DateTime nextGameTimerRefreshAtUtc;
 
     public Plugin()
     {
@@ -67,6 +70,8 @@ public sealed class Plugin : IDalamudPlugin
             PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
         var configurationChanged = Configuration.MigrateToCurrentVersion();
+
+        configurationChanged |= RefreshGameLinkedTimersInternal();
 
         var loadedAtUnixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         foreach (var timer in Configuration.Timers)
@@ -275,6 +280,10 @@ public sealed class Plugin : IDalamudPlugin
         ChatGui.Print("/etimers clickthrough on - Enables click-through.", ChatTag);
         ChatGui.Print("/etimers clickthrough off - Disables click-through.", ChatTag);
         ChatGui.Print("/etimers changes - Opens the changelog.", ChatTag);
+        ChatGui.Print("Game-linked timers", ChatTag);
+        ChatGui.Print("Use + Housing Timer to follow the current Housing Lottery phase automatically.", ChatTag);
+        ChatGui.Print("Linked targets are automatic, but their appearance and alerts remain customizable.", ChatTag);
+        ChatGui.Print("Use Convert to Manual in the editor to stop automatic schedule updates.", ChatTag);
         ChatGui.Print("Overlay controls", ChatTag);
         ChatGui.Print("Click a timer row to open that timer.", ChatTag);
         ChatGui.Print("Drag a timer row to move the overlay.", ChatTag);
@@ -315,12 +324,13 @@ public sealed class Plugin : IDalamudPlugin
         Configuration.Save();
     }
 
-    internal bool IsTimerAwaitingCompletion(Guid timerId)
+    internal bool IsCompletionAlertCurrent(Guid timerId, bool allowAfterReschedule)
     {
         var timer = Configuration.Timers.Find(entry => entry.Id == timerId);
         return timer is not null
             && timer.IsActive
-            && timer.EndUnixSeconds <= DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            && (allowAfterReschedule
+                || timer.EndUnixSeconds <= DateTimeOffset.UtcNow.ToUnixTimeSeconds());
     }
 
     internal void TestCompletionAlert(
@@ -331,6 +341,7 @@ public sealed class Plugin : IDalamudPlugin
         bool showPopup,
         bool playSound,
         CompletionSound completionSound,
+        int alertVolumePercent,
         bool printToChat)
     {
         if (showPopup)
@@ -345,13 +356,15 @@ public sealed class Plugin : IDalamudPlugin
 
         if (playSound)
         {
-            PlayCompletionSound(completionSound);
+            PlayCompletionSound(completionSound, alertVolumePercent);
         }
     }
 
-    internal void PreviewCompletionSound(CompletionSound sound)
+    internal void PreviewCompletionSound(
+        CompletionSound sound,
+        int alertVolumePercent)
     {
-        PlayCompletionSound(sound);
+        PlayCompletionSound(sound, alertVolumePercent);
     }
 
     internal void DismissCompletionAlert(Guid timerId)
@@ -363,7 +376,13 @@ public sealed class Plugin : IDalamudPlugin
         }
 
         var changed = false;
-        if (timer.RepeatMode != TimerRepeatMode.None)
+        if (timer.SourceType == TimerSourceType.GameLinked)
+        {
+            timer.IsSnoozed = false;
+            changed = TryRefreshGameLinkedTimer(timer) || changed;
+            completionAlertedTimerIds.Remove(timer.Id);
+        }
+        else if (timer.RepeatMode != TimerRepeatMode.None)
         {
             ScheduleNextRepeat(timer, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
             completionAlertedTimerIds.Remove(timer.Id);
@@ -411,6 +430,11 @@ public sealed class Plugin : IDalamudPlugin
         }
 
         var nowUnixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        if (timer.SourceType == TimerSourceType.GameLinked)
+        {
+            return false;
+        }
+
         if (timer.RepeatMode == TimerRepeatMode.None)
         {
             timer.EndUnixSeconds = nowUnixSeconds
@@ -447,6 +471,7 @@ public sealed class Plugin : IDalamudPlugin
     private void OnFrameworkUpdate(IFramework framework)
     {
         UpdateCompletionAlerts();
+        UpdateGameLinkedTimers();
 
         if (!changelogPendingAfterLogin)
         {
@@ -507,7 +532,7 @@ public sealed class Plugin : IDalamudPlugin
             return;
         }
 
-        CompletionSound? soundToPlay = null;
+        (CompletionSound Sound, int VolumePercent)? soundToPlay = null;
         var timersChanged = false;
         foreach (var timer in newlyCompleted)
         {
@@ -523,10 +548,18 @@ public sealed class Plugin : IDalamudPlugin
 
             if (timer.PlaySoundOnCompletion && !soundToPlay.HasValue)
             {
-                soundToPlay = timer.CompletionSound;
+                soundToPlay = (
+                    timer.CompletionSound,
+                    timer.AlertVolumePercent);
             }
 
             if (!timer.ShowCompletionPopup
+                && timer.SourceType == TimerSourceType.GameLinked)
+            {
+                timer.IsSnoozed = false;
+                timersChanged = TryRefreshGameLinkedTimer(timer) || timersChanged;
+            }
+            else if (!timer.ShowCompletionPopup
                 && timer.RepeatMode != TimerRepeatMode.None)
             {
                 ScheduleNextRepeat(timer, nowUnixSeconds);
@@ -543,7 +576,9 @@ public sealed class Plugin : IDalamudPlugin
         // user gets a clear alert instead of several effects playing together.
         if (soundToPlay.HasValue)
         {
-            PlayCompletionSound(soundToPlay.Value);
+            PlayCompletionSound(
+                soundToPlay.Value.Sound,
+                soundToPlay.Value.VolumePercent);
         }
 
         if (timersChanged)
@@ -559,18 +594,101 @@ public sealed class Plugin : IDalamudPlugin
         timer.IsSnoozed = false;
     }
 
-    private static unsafe void PlayCompletionSound(CompletionSound sound)
+    private void UpdateGameLinkedTimers()
+    {
+        var now = DateTime.UtcNow;
+        var nowUnixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var hasDueLinkedTimer = Configuration.Timers.Exists(
+            timer => timer.SourceType == TimerSourceType.GameLinked
+                && !timer.IsSnoozed
+                && timer.EndUnixSeconds <= nowUnixSeconds);
+
+        if (!hasDueLinkedTimer && now < nextGameTimerRefreshAtUtc)
+        {
+            return;
+        }
+
+        if (RefreshGameLinkedTimersInternal())
+        {
+            Configuration.Save();
+        }
+
+        nextGameTimerRefreshAtUtc = now + GameTimerRefreshInterval;
+    }
+
+    private bool RefreshGameLinkedTimersInternal()
+    {
+        var changed = false;
+        foreach (var timer in Configuration.Timers)
+        {
+            if (timer.SourceType == TimerSourceType.GameLinked)
+            {
+                changed = TryRefreshGameLinkedTimer(timer) || changed;
+            }
+        }
+
+        return changed;
+    }
+
+    private static bool TryRefreshGameLinkedTimer(TimerEntry timer)
+    {
+        if (!GameLinkedTimers.TryGetSnapshot(
+                timer.GameSource,
+                DateTimeOffset.UtcNow,
+                out var snapshot))
+        {
+            return false;
+        }
+
+        var changed = false;
+        if (timer.LinkedTargetUnixSeconds != snapshot.PeriodEndUnixSeconds)
+        {
+            timer.LinkedTargetUnixSeconds = snapshot.PeriodEndUnixSeconds;
+            changed = true;
+        }
+
+        if (!timer.IsSnoozed
+            && timer.EndUnixSeconds != snapshot.PeriodEndUnixSeconds)
+        {
+            timer.EndUnixSeconds = snapshot.PeriodEndUnixSeconds;
+            timer.RecurrenceAnchorUnixSeconds = snapshot.PeriodEndUnixSeconds;
+            changed = true;
+        }
+
+        if (timer.RepeatMode != TimerRepeatMode.None)
+        {
+            timer.RepeatMode = TimerRepeatMode.None;
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    private static unsafe void PlayCompletionSound(
+        CompletionSound sound,
+        int alertVolumePercent)
     {
         try
         {
             var chatSoundEffectId = CompletionSounds.GetChatSoundEffectId(sound);
-            if (chatSoundEffectId.HasValue)
+            var effectId = chatSoundEffectId.HasValue
+                ? chatSoundEffectId.Value + 36
+                : CompletionSoundEffectId;
+
+            SoundData* paddedSoundData = null;
+            SoundData* soundData = null;
+            UIGlobals.PlaySoundEffect(
+                effectId,
+                &paddedSoundData,
+                &soundData);
+
+            var playingSoundData = soundData != null
+                ? soundData
+                : paddedSoundData;
+            if (playingSoundData != null)
             {
-                UIGlobals.PlayChatSoundEffect(chatSoundEffectId.Value);
-            }
-            else
-            {
-                UIGlobals.PlaySoundEffect(CompletionSoundEffectId);
+                var volume = Math.Clamp(alertVolumePercent, 0, 200) / 100f;
+                playingSoundData->SetVolume(volume);
             }
         }
         catch (Exception exception)

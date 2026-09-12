@@ -18,7 +18,8 @@ public sealed class CompletionAlertWindow : Window
         string Notes,
         TimerIcon Icon,
         TimerColor Color,
-        bool IsTest);
+        bool IsTest,
+        bool AllowAfterReschedule);
 
     private readonly Plugin plugin;
     private readonly Queue<CompletionAlert> pendingAlerts = new();
@@ -47,7 +48,9 @@ public sealed class CompletionAlertWindow : Window
         }
 
         if (currentAlert?.TimerId is Guid timerId
-            && !plugin.IsTimerAwaitingCompletion(timerId))
+            && !plugin.IsCompletionAlertCurrent(
+                timerId,
+                currentAlert.AllowAfterReschedule))
         {
             currentAlert = null;
         }
@@ -56,7 +59,9 @@ public sealed class CompletionAlertWindow : Window
         {
             var candidate = pendingAlerts.Dequeue();
             if (!candidate.TimerId.HasValue
-                || plugin.IsTimerAwaitingCompletion(candidate.TimerId.Value))
+                || plugin.IsCompletionAlertCurrent(
+                    candidate.TimerId.Value,
+                    candidate.AllowAfterReschedule))
             {
                 currentAlert = candidate;
             }
@@ -158,12 +163,15 @@ public sealed class CompletionAlertWindow : Window
         DrawSnoozeSelector();
         ImGui.Spacing();
 
+        var timerId = currentAlert.TimerId.Value;
         var buttonWidth =
             (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X) / 2f;
+
         if (ImGui.Button("Dismiss", new Vector2(buttonWidth, 0f)))
         {
-            plugin.DismissCompletionAlert(currentAlert.TimerId.Value);
+            plugin.DismissCompletionAlert(timerId);
             currentAlert = null;
+            return;
         }
 
         ImGui.SameLine();
@@ -172,7 +180,7 @@ public sealed class CompletionAlertWindow : Window
                 $"Snooze ({FormatMinutes(snoozeMinutes)})",
                 new Vector2(buttonWidth, 0f)))
         {
-            plugin.SnoozeTimer(currentAlert.TimerId.Value, snoozeMinutes);
+            plugin.SnoozeTimer(timerId, snoozeMinutes);
             currentAlert = null;
         }
     }
@@ -198,7 +206,8 @@ public sealed class CompletionAlertWindow : Window
                 timer.Notes,
                 timer.Icon,
                 timer.Color,
-                false));
+                false,
+                timer.SourceType == TimerSourceType.GameLinked));
     }
 
     internal void Enqueue(
@@ -209,7 +218,7 @@ public sealed class CompletionAlertWindow : Window
         bool isTest)
     {
         pendingAlerts.Enqueue(
-            new CompletionAlert(null, name, notes, icon, color, isTest));
+            new CompletionAlert(null, name, notes, icon, color, isTest, false));
     }
 
     private void DrawSnoozeSelector()

@@ -64,6 +64,12 @@ public static class TimerSchedule
             return "Snoozed";
         }
 
+        var linkedStatus = GameLinkedTimers.GetShortStatus(timer);
+        if (linkedStatus.Length > 0)
+        {
+            return linkedStatus;
+        }
+
         return timer.RepeatMode == TimerRepeatMode.None
             ? string.Empty
             : "Repeats";

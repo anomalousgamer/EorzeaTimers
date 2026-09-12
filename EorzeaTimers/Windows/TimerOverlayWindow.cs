@@ -268,6 +268,22 @@ public sealed class TimerOverlayWindow : Window
         var remainingX = MathF.Max(
             textStartX + 60f * globalScale,
             contentRight - remainingWidth - horizontalPadding);
+
+        if (timer.SourceType == TimerSourceType.GameLinked)
+        {
+            var linkX = textStartX
+                + ImGui.CalcTextSize(timer.Name).X
+                + 6f * globalScale;
+            if (linkX + 14f * globalScale < remainingX)
+            {
+                ImGui.SetCursorPos(new Vector2(linkX, nameY));
+                using (Plugin.PluginInterface.UiBuilder.IconFontFixedWidthHandle.Push())
+                {
+                    ImGui.TextDisabled("\uf0c1");
+                }
+            }
+        }
+
         ImGui.SetCursorPos(new Vector2(remainingX, nameY));
         ImGui.TextColored(new Vector4(0.95f, 0.88f, 0.70f, 1f), remainingText);
 

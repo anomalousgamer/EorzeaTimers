@@ -3,9 +3,9 @@
     "Author": "Anomaly",
     "Name": "Eorzea Timers",
     "Punchline": "Create and track personalized timers in FFXIV.",
-    "Description": "Create persistent, personalized countdown and repeating timers with configurable alerts, snooze controls, and an in-game overlay.",
+    "Description": "Create persistent manual and game-linked countdown timers with configurable alerts, snooze controls, and an in-game overlay.",
     "InternalName": "EorzeaTimers",
-    "AssemblyVersion": "0.6.0.0",
+    "AssemblyVersion": "0.7.0.0",
     "RepoUrl": "https://github.com/anomalousgamer/EorzeaTimers",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 15,
@@ -17,9 +17,9 @@
     "IsHide": false,
     "IsTestingExclusive": false,
     "DownloadCount": 0,
-    "LastUpdate": "1789178584",
-    "Changelog": "Stage 6 - Repeating Timers and Snooze\n- Added interval, daily, weekly, selected-weekday, and monthly repeats.\n- Added preset and custom snooze controls.\n- Added per-timer overlay notes with right-click toggling.\n- Added twelve selectable FFXIV chat sounds and sound previewing.\n- Added manual restart and next-occurrence previews.\n- Save and Cancel now remain visible while editing.\n- Missed repeating timers advance quietly after login.",
-    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.6.0.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.6.0.0/latest.zip"
+    "LastUpdate": "1789236566",
+    "Changelog": "Stage 7 - Game-linked Housing Timer\n- Added the first game-linked source for the Housing Lottery cycle.\n- Added separate Manual Timers and Game-linked Timers sections.\n- Housing targets automatically follow the five-day entry and four-day results schedule.\n- Linked timers require no manual synchronization command or button.\n- Added Convert to Manual and linked indicators in the manager and overlay.\n- Added per-timer alert volume from 0% through 200% with live preview support.\n- Existing timers migrate to 100% volume without losing settings.\n- Save is disabled when clean; Cancel now becomes Revert Changes or Close when appropriate.",
+    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.7.0.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.7.0.0/latest.zip"
   }
 ]

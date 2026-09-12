@@ -28,6 +28,35 @@ public sealed class MainWindow : Window
         Duration,
     }
 
+    private sealed record EditorDraftState(
+        string Name,
+        string Notes,
+        string Date,
+        string Time,
+        bool IsActive,
+        bool ShowInOverlay,
+        bool ShowNotesInOverlay,
+        bool ShowCompletionPopup,
+        bool PlaySoundOnCompletion,
+        bool PrintCompletionToChat,
+        CompletionSound CompletionSound,
+        int AlertVolumePercent,
+        TimerRepeatMode RepeatMode,
+        RepeatIntervalUnit RepeatIntervalUnit,
+        int RepeatInterval,
+        int RepeatWeekdayMask,
+        int RepeatDayOfMonth,
+        TimerRepeatAnchor RepeatAnchor,
+        TimerIcon Icon,
+        TimerColor Color,
+        TimerDisplayFormat DisplayFormat,
+        int DurationDays,
+        int DurationHours,
+        int DurationMinutes,
+        TimerInputMode InputMode,
+        TimerSourceType SourceType,
+        GameTimerSource GameSource);
+
     private readonly Plugin plugin;
 
     private Guid? selectedTimerId;
@@ -45,6 +74,7 @@ public sealed class MainWindow : Window
     private bool editPlaySoundOnCompletion = true;
     private bool editPrintCompletionToChat;
     private CompletionSound editCompletionSound = CompletionSound.StandardNotification;
+    private int editAlertVolumePercent = 100;
     private TimerRepeatMode editRepeatMode = TimerRepeatMode.None;
     private RepeatIntervalUnit editRepeatIntervalUnit = RepeatIntervalUnit.Hours;
     private int editRepeatInterval = 1;
@@ -58,7 +88,11 @@ public sealed class MainWindow : Window
     private int durationHours = 1;
     private int durationMinutes;
     private TimerInputMode inputMode = TimerInputMode.TargetDateTime;
+    private TimerSourceType editSourceType = TimerSourceType.Manual;
+    private GameTimerSource editGameSource = GameTimerSource.None;
+    private EditorDraftState? savedDraftState;
     private string validationMessage = string.Empty;
+    private bool validationIsError = true;
 
     public MainWindow(Plugin plugin)
         : base("Eorzea Timers##EorzeaTimersMain")
@@ -108,6 +142,13 @@ public sealed class MainWindow : Window
         if (!isCreatingNew && selectedTimerId == timerId)
         {
             editShowNotesInOverlay = showNotes;
+            if (savedDraftState is not null)
+            {
+                savedDraftState = savedDraftState with
+                {
+                    ShowNotesInOverlay = showNotes,
+                };
+            }
         }
     }
 
@@ -143,21 +184,29 @@ public sealed class MainWindow : Window
                 }
                 else
                 {
-                    foreach (var timer in plugin.Configuration.Timers)
-                    {
-                        DrawTimerRow(timer);
-                    }
+                    DrawTimerGroup(
+                        "Manual Timers",
+                        timer => timer.SourceType == TimerSourceType.Manual);
+                    DrawTimerGroup(
+                        "Game-linked Timers",
+                        timer => timer.SourceType == TimerSourceType.GameLinked);
                 }
             }
         }
 
         var fullWidth = ImGui.GetContentRegionAvail().X;
-        if (ImGui.Button("+  Add Timer", new Vector2(fullWidth, 0)))
+        var halfWidth = (fullWidth - ImGui.GetStyle().ItemSpacing.X) / 2f;
+        if (ImGui.Button("+ Manual Timer", new Vector2(halfWidth, 0)))
         {
             BeginNewTimer();
         }
 
-        var halfWidth = (fullWidth - ImGui.GetStyle().ItemSpacing.X) / 2f;
+        ImGui.SameLine();
+        if (ImGui.Button("+ Housing Timer", new Vector2(halfWidth, 0)))
+        {
+            BeginNewHousingTimer();
+        }
+
         var hasSelectedTimer = !isCreatingNew && GetSelectedTimer() is not null;
 
         using (ImRaii.Disabled(!hasSelectedTimer))
@@ -184,6 +233,24 @@ public sealed class MainWindow : Window
         }
 
         ImGui.PopStyleColor();
+    }
+
+    private void DrawTimerGroup(string label, Func<TimerEntry, bool> predicate)
+    {
+        var matchingTimers = plugin.Configuration.Timers.FindAll(
+            timer => predicate(timer));
+        if (matchingTimers.Count == 0)
+        {
+            return;
+        }
+
+        ImGui.TextDisabled(label);
+        foreach (var timer in matchingTimers)
+        {
+            DrawTimerRow(timer);
+        }
+
+        ImGui.Spacing();
     }
 
     private void DrawTimerRow(TimerEntry timer)
@@ -227,6 +294,24 @@ public sealed class MainWindow : Window
         ImGui.SetCursorPos(rowStart + new Vector2(38f * scale, 6f * scale));
         ImGui.TextColored(color, timer.Name);
 
+        if (timer.SourceType == TimerSourceType.GameLinked)
+        {
+            var linkX = rowStart.X
+                + 38f * scale
+                + ImGui.CalcTextSize(timer.Name).X
+                + 7f * scale;
+            ImGui.SetCursorPos(new Vector2(linkX, rowStart.Y + 6f * scale));
+            using (Plugin.PluginInterface.UiBuilder.IconFontFixedWidthHandle.Push())
+            {
+                ImGui.TextDisabled("\uf0c1");
+            }
+
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Game-linked timer");
+            }
+        }
+
         ImGui.SetCursorPos(rowStart + new Vector2(38f * scale, 30f * scale));
         ImGui.TextDisabled(TimerAppearance.FormatTimer(timer));
 
@@ -243,7 +328,9 @@ public sealed class MainWindow : Window
 
         ImGui.TextColored(
             new Vector4(0.92f, 0.75f, 0.39f, 1f),
-            isCreatingNew ? "Add Timer" : "Edit Timer");
+            editSourceType == TimerSourceType.GameLinked
+                ? isCreatingNew ? "Add Game-linked Timer" : "Edit Game-linked Timer"
+                : isCreatingNew ? "Add Timer" : "Edit Timer");
         ImGui.Separator();
         ImGui.Spacing();
 
@@ -272,6 +359,9 @@ public sealed class MainWindow : Window
         DrawNameInput();
         ImGui.Spacing();
 
+        DrawSourceInputs();
+        ImGui.Spacing();
+
         if (ImGui.Checkbox("Enabled", ref editIsActive))
         {
             validationMessage = string.Empty;
@@ -297,28 +387,31 @@ public sealed class MainWindow : Window
         ImGui.TextDisabled("You can also toggle this by right-clicking the overlay timer.");
         ImGui.Spacing();
 
-        if (ImGui.RadioButton(
-                "Target date and time",
-                inputMode == TimerInputMode.TargetDateTime))
+        if (editSourceType == TimerSourceType.Manual)
         {
-            inputMode = TimerInputMode.TargetDateTime;
-            validationMessage = string.Empty;
+            if (ImGui.RadioButton(
+                    "Target date and time",
+                    inputMode == TimerInputMode.TargetDateTime))
+            {
+                inputMode = TimerInputMode.TargetDateTime;
+                validationMessage = string.Empty;
+            }
+
+            DrawTargetDateTimeInputs();
+            ImGui.Spacing();
+
+            if (ImGui.RadioButton("Duration", inputMode == TimerInputMode.Duration))
+            {
+                inputMode = TimerInputMode.Duration;
+                validationMessage = string.Empty;
+            }
+
+            DrawDurationInputs();
+            ImGui.Spacing();
+
+            DrawRepeatInputs();
+            ImGui.Spacing();
         }
-
-        DrawTargetDateTimeInputs();
-        ImGui.Spacing();
-
-        if (ImGui.RadioButton("Duration", inputMode == TimerInputMode.Duration))
-        {
-            inputMode = TimerInputMode.Duration;
-            validationMessage = string.Empty;
-        }
-
-        DrawDurationInputs();
-        ImGui.Spacing();
-
-        DrawRepeatInputs();
-        ImGui.Spacing();
 
         DrawAppearanceInputs();
         ImGui.Spacing();
@@ -332,16 +425,77 @@ public sealed class MainWindow : Window
         ImGui.TextDisabled("Active timers can also be shown in the persistent overlay.");
     }
 
+    private void DrawSourceInputs()
+    {
+        ImGui.TextUnformatted("Timer source");
+        ImGui.Separator();
+
+        if (editSourceType == TimerSourceType.Manual)
+        {
+            ImGui.TextDisabled("Manual - its target is controlled by the settings below.");
+            return;
+        }
+
+        if (!GameLinkedTimers.TryGetSnapshot(
+                editGameSource,
+                DateTimeOffset.UtcNow,
+                out var snapshot))
+        {
+            ImGui.TextColored(
+                new Vector4(1f, 0.35f, 0.3f, 1f),
+                "The linked source is currently unavailable.");
+            return;
+        }
+
+        var periodEnd = DateTimeOffset
+            .FromUnixTimeSeconds(snapshot.PeriodEndUnixSeconds)
+            .LocalDateTime;
+
+        ImGui.TextColored(
+            new Vector4(0.42f, 0.82f, 0.47f, 1f),
+            $"Linked: {snapshot.SourceName}");
+        ImGui.TextUnformatted($"Current phase: {snapshot.PhaseName}");
+        ImGui.TextUnformatted($"Next transition: {periodEnd:ddd, MMM d, yyyy h:mm tt}");
+        ImGui.TextDisabled(
+            "Calculated from FFXIV's five-day entry and four-day results schedule.");
+        ImGui.TextDisabled(
+            "The target updates automatically; appearance, notes, and alerts remain customizable.");
+
+        if (ImGui.Button("Convert to Manual"))
+        {
+            var targetLocal = periodEnd;
+            editSourceType = TimerSourceType.Manual;
+            editGameSource = GameTimerSource.None;
+            editDate = targetLocal.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            editTime = targetLocal.ToString("HH:mm", CultureInfo.InvariantCulture);
+            inputMode = TimerInputMode.TargetDateTime;
+            editRepeatMode = TimerRepeatMode.None;
+            SetFooterMessage(
+                "The timer will become manual when you save these changes.",
+                false);
+        }
+    }
+
     private void DrawEditorFooter()
     {
+        var isDirty = IsDraftDirty();
         ImGui.Separator();
         if (!string.IsNullOrWhiteSpace(validationMessage))
         {
-            ImGui.TextColored(new Vector4(1f, 0.35f, 0.3f, 1f), validationMessage);
+            ImGui.TextColored(
+                validationIsError
+                    ? new Vector4(1f, 0.35f, 0.3f, 1f)
+                    : new Vector4(0.42f, 0.82f, 0.47f, 1f),
+                validationMessage);
         }
         else
         {
-            ImGui.TextDisabled("Save and Cancel remain available while the editor form scrolls.");
+            ImGui.TextDisabled(
+                isCreatingNew
+                    ? "Create the timer with Save, or discard it with Cancel."
+                    : isDirty
+                        ? "This timer has unsaved changes."
+                        : "No unsaved changes.");
         }
 
         var buttonWidth = 120f * ImGuiHelpers.GlobalScale;
@@ -350,28 +504,41 @@ public sealed class MainWindow : Window
         var availableWidth = ImGui.GetContentRegionAvail().X;
 
         var selectedTimer = !isCreatingNew ? GetSelectedTimer() : null;
-        using (ImRaii.Disabled(selectedTimer is null))
+        if (selectedTimer?.SourceType == TimerSourceType.Manual)
         {
             if (ImGui.Button("Restart Timer", new Vector2(buttonWidth, 0f))
-                && selectedTimer is not null
                 && plugin.RestartTimer(selectedTimer.Id))
             {
                 SelectTimer(selectedTimer.Id);
-                validationMessage = "Timer restarted using its saved schedule.";
+                SetFooterMessage(
+                    "Timer restarted using its saved schedule.",
+                    false);
             }
+        }
+        else
+        {
+            ImGui.Dummy(new Vector2(buttonWidth, ImGui.GetFrameHeight()));
         }
 
         ImGui.SameLine();
         ImGui.SetCursorPosX(startX + MathF.Max(buttonWidth, availableWidth - totalButtonWidth));
 
-        if (ImGui.Button("Save", new Vector2(buttonWidth, 0)))
+        using (ImRaii.Disabled(!isDirty))
         {
-            SaveTimer();
+            if (ImGui.Button("Save", new Vector2(buttonWidth, 0)))
+            {
+                SaveTimer();
+            }
         }
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Cancel", new Vector2(buttonWidth, 0)))
+        var secondaryLabel = isCreatingNew
+            ? "Cancel"
+            : isDirty
+                ? "Revert Changes"
+                : "Close";
+        if (ImGui.Button(secondaryLabel, new Vector2(buttonWidth, 0)))
         {
             CancelDraft();
         }
@@ -817,7 +984,32 @@ public sealed class MainWindow : Window
             ImGui.SameLine();
             if (ImGui.Button("Preview Sound"))
             {
-                plugin.PreviewCompletionSound(editCompletionSound);
+                plugin.PreviewCompletionSound(
+                    editCompletionSound,
+                    editAlertVolumePercent);
+            }
+
+            ImGui.AlignTextToFramePadding();
+            ImGui.TextUnformatted("Alert volume");
+            ImGui.SameLine(160f * ImGuiHelpers.GlobalScale);
+            ImGui.SetNextItemWidth(190f * ImGuiHelpers.GlobalScale);
+            ImGui.SliderInt(
+                "##AlertVolumePercent",
+                ref editAlertVolumePercent,
+                0,
+                200,
+                "%d%%");
+
+            ImGui.SameLine();
+            ImGui.TextDisabled(
+                editAlertVolumePercent > 100
+                    ? "Experimental boost"
+                    : "Per timer");
+
+            if (editAlertVolumePercent > 100 && ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(
+                    "FFXIV may clamp louder values or introduce distortion.");
             }
 
             ImGui.Unindent(24f * ImGuiHelpers.GlobalScale);
@@ -832,7 +1024,9 @@ public sealed class MainWindow : Window
                 && !editPlaySoundOnCompletion
                 && !editPrintCompletionToChat)
             {
-                validationMessage = "Enable at least one completion alert option to test it.";
+                SetFooterMessage(
+                    "Enable at least one completion alert option to test it.",
+                    true);
             }
             else
             {
@@ -848,8 +1042,9 @@ public sealed class MainWindow : Window
                     editShowCompletionPopup,
                     editPlaySoundOnCompletion,
                     editCompletionSound,
+                    editAlertVolumePercent,
                     editPrintCompletionToChat);
-                validationMessage = "Test completion alert sent.";
+                SetFooterMessage("Test completion alert sent.", false);
             }
         }
 
@@ -880,6 +1075,7 @@ public sealed class MainWindow : Window
         editPlaySoundOnCompletion = true;
         editPrintCompletionToChat = false;
         editCompletionSound = CompletionSound.StandardNotification;
+        editAlertVolumePercent = 100;
         editRepeatMode = TimerRepeatMode.None;
         editRepeatIntervalUnit = RepeatIntervalUnit.Hours;
         editRepeatInterval = 1;
@@ -893,7 +1089,45 @@ public sealed class MainWindow : Window
         durationHours = 1;
         durationMinutes = 0;
         inputMode = TimerInputMode.TargetDateTime;
+        editSourceType = TimerSourceType.Manual;
+        editGameSource = GameTimerSource.None;
+        savedDraftState = null;
         validationMessage = string.Empty;
+        validationIsError = true;
+    }
+
+    private void BeginNewHousingTimer()
+    {
+        var existing = plugin.Configuration.Timers.Find(
+            timer => timer.SourceType == TimerSourceType.GameLinked
+                && timer.GameSource == GameTimerSource.HousingLottery);
+        if (existing is not null)
+        {
+            SelectTimer(existing.Id);
+            SetFooterMessage(
+                "The Housing Lottery game timer already exists, so it has been selected.",
+                false);
+            return;
+        }
+
+        BeginNewTimer();
+        editSourceType = TimerSourceType.GameLinked;
+        editGameSource = GameTimerSource.HousingLottery;
+        editName = "Housing Lottery";
+        editIcon = TimerIcon.House;
+        editColor = TimerColor.Gold;
+
+        if (GameLinkedTimers.TryGetSnapshot(
+                editGameSource,
+                DateTimeOffset.UtcNow,
+                out var snapshot))
+        {
+            var targetLocal = DateTimeOffset
+                .FromUnixTimeSeconds(snapshot.PeriodEndUnixSeconds)
+                .LocalDateTime;
+            editDate = targetLocal.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            editTime = targetLocal.ToString("HH:mm", CultureInfo.InvariantCulture);
+        }
     }
 
     private void SelectTimer(Guid timerId)
@@ -926,6 +1160,7 @@ public sealed class MainWindow : Window
         editPlaySoundOnCompletion = timer.PlaySoundOnCompletion;
         editPrintCompletionToChat = timer.PrintCompletionToChat;
         editCompletionSound = timer.CompletionSound;
+        editAlertVolumePercent = timer.AlertVolumePercent;
         editRepeatMode = timer.RepeatMode;
         editRepeatIntervalUnit = timer.RepeatIntervalUnit;
         editRepeatInterval = timer.RepeatInterval;
@@ -939,17 +1174,28 @@ public sealed class MainWindow : Window
         durationHours = 1;
         durationMinutes = 0;
         inputMode = TimerInputMode.TargetDateTime;
+        editSourceType = timer.SourceType;
+        editGameSource = timer.GameSource;
         validationMessage = string.Empty;
+        validationIsError = true;
+        savedDraftState = CaptureDraftState();
     }
 
     private void CancelDraft()
     {
         if (!isCreatingNew)
         {
+            if (!IsDraftDirty())
+            {
+                IsOpen = false;
+                return;
+            }
+
             var selected = GetSelectedTimer();
             if (selected is not null)
             {
                 LoadDraftFromTimer(selected);
+                SetFooterMessage("Unsaved changes were reverted.", false);
             }
 
             return;
@@ -971,12 +1217,13 @@ public sealed class MainWindow : Window
         else
         {
             selectionBeforeCreate = null;
-            BeginNewTimer();
+            IsOpen = false;
         }
     }
 
     private void SaveTimer()
     {
+        validationIsError = true;
         var trimmedName = editName.Trim();
         var trimmedNotes = editNotes.Trim();
 
@@ -998,12 +1245,27 @@ public sealed class MainWindow : Window
             return;
         }
 
-        if (!TryGetEndUnixSeconds(out var endUnixSeconds))
+        long endUnixSeconds;
+        if (editSourceType == TimerSourceType.GameLinked)
+        {
+            if (!GameLinkedTimers.TryGetSnapshot(
+                    editGameSource,
+                    DateTimeOffset.UtcNow,
+                    out var snapshot))
+            {
+                validationMessage = "The linked timer source is unavailable right now.";
+                return;
+            }
+
+            endUnixSeconds = snapshot.PeriodEndUnixSeconds;
+        }
+        else if (!TryGetEndUnixSeconds(out endUnixSeconds))
         {
             return;
         }
 
-        if (editRepeatMode == TimerRepeatMode.SelectedWeekdays
+        if (editSourceType == TimerSourceType.Manual
+            && editRepeatMode == TimerRepeatMode.SelectedWeekdays
             && (editRepeatWeekdayMask & 0x7F) == 0)
         {
             validationMessage = "Select at least one weekday for this repeating timer.";
@@ -1023,6 +1285,13 @@ public sealed class MainWindow : Window
         timer.Name = trimmedName;
         timer.Notes = trimmedNotes;
         timer.EndUnixSeconds = endUnixSeconds;
+        timer.SourceType = editSourceType;
+        timer.GameSource = editSourceType == TimerSourceType.GameLinked
+            ? editGameSource
+            : GameTimerSource.None;
+        timer.LinkedTargetUnixSeconds = editSourceType == TimerSourceType.GameLinked
+            ? endUnixSeconds
+            : 0;
         timer.IsActive = editIsActive;
         timer.ShowInOverlay = editShowInOverlay;
         timer.ShowNotesInOverlay = editShowNotesInOverlay;
@@ -1030,7 +1299,10 @@ public sealed class MainWindow : Window
         timer.PlaySoundOnCompletion = editPlaySoundOnCompletion;
         timer.PrintCompletionToChat = editPrintCompletionToChat;
         timer.CompletionSound = editCompletionSound;
-        timer.RepeatMode = editRepeatMode;
+        timer.AlertVolumePercent = Math.Clamp(editAlertVolumePercent, 0, 200);
+        timer.RepeatMode = editSourceType == TimerSourceType.GameLinked
+            ? TimerRepeatMode.None
+            : editRepeatMode;
         timer.RepeatIntervalUnit = editRepeatIntervalUnit;
         timer.RepeatInterval = Math.Clamp(editRepeatInterval, 1, 10000);
         timer.RepeatWeekdayMask = editRepeatWeekdayMask & 0x7F;
@@ -1050,6 +1322,9 @@ public sealed class MainWindow : Window
 
         plugin.Configuration.Save();
         SelectTimer(timer.Id);
+        SetFooterMessage(
+            isNewTimer ? "Timer created." : "Changes saved.",
+            false);
     }
 
     private bool TryGetEndUnixSeconds(
@@ -1150,6 +1425,9 @@ public sealed class MainWindow : Window
             Name = CreateDuplicateName(source.Name),
             Notes = source.Notes,
             EndUnixSeconds = source.EndUnixSeconds,
+            SourceType = TimerSourceType.Manual,
+            GameSource = GameTimerSource.None,
+            LinkedTargetUnixSeconds = 0,
             IsActive = source.IsActive,
             ShowInOverlay = source.ShowInOverlay,
             ShowNotesInOverlay = source.ShowNotesInOverlay,
@@ -1157,6 +1435,7 @@ public sealed class MainWindow : Window
             PlaySoundOnCompletion = source.PlaySoundOnCompletion,
             PrintCompletionToChat = source.PrintCompletionToChat,
             CompletionSound = source.CompletionSound,
+            AlertVolumePercent = source.AlertVolumePercent,
             RepeatMode = source.RepeatMode,
             RepeatIntervalUnit = source.RepeatIntervalUnit,
             RepeatInterval = source.RepeatInterval,
@@ -1175,6 +1454,13 @@ public sealed class MainWindow : Window
         plugin.Configuration.Timers.Insert(sourceIndex + 1, duplicate);
         plugin.Configuration.Save();
         SelectTimer(duplicate.Id);
+
+        if (source.SourceType == TimerSourceType.GameLinked)
+        {
+            SetFooterMessage(
+                "The linked timer was duplicated as a manual timer snapshot.",
+                false);
+        }
     }
 
     private void DeleteSelectedTimer()
@@ -1212,6 +1498,51 @@ public sealed class MainWindow : Window
 
         return plugin.Configuration.Timers.Find(
             timer => timer.Id == selectedTimerId.Value);
+    }
+
+    private bool IsDraftDirty()
+    {
+        return isCreatingNew
+            || savedDraftState is null
+            || savedDraftState != CaptureDraftState();
+    }
+
+    private EditorDraftState CaptureDraftState()
+    {
+        return new EditorDraftState(
+            editName,
+            editNotes,
+            editDate,
+            editTime,
+            editIsActive,
+            editShowInOverlay,
+            editShowNotesInOverlay,
+            editShowCompletionPopup,
+            editPlaySoundOnCompletion,
+            editPrintCompletionToChat,
+            editCompletionSound,
+            editAlertVolumePercent,
+            editRepeatMode,
+            editRepeatIntervalUnit,
+            editRepeatInterval,
+            editRepeatWeekdayMask,
+            editRepeatDayOfMonth,
+            editRepeatAnchor,
+            editIcon,
+            editColor,
+            editDisplayFormat,
+            durationDays,
+            durationHours,
+            durationMinutes,
+            inputMode,
+            editSourceType,
+            editGameSource);
+    }
+
+    private void SetFooterMessage(string message, bool isError)
+    {
+        validationMessage = message;
+        validationIsError = isError;
     }
 
     private static string CreateDuplicateName(string sourceName)

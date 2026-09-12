@@ -13,6 +13,14 @@ public sealed class TimerEntry
 
     public long EndUnixSeconds { get; set; }
 
+    public TimerSourceType SourceType { get; set; } = TimerSourceType.Manual;
+
+    public GameTimerSource GameSource { get; set; } = GameTimerSource.None;
+
+    // The source's current canonical target is retained separately so a
+    // game-linked alert can be snoozed without breaking its schedule link.
+    public long LinkedTargetUnixSeconds { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     public bool ShowInOverlay { get; set; } = true;
@@ -24,6 +32,8 @@ public sealed class TimerEntry
     public bool PlaySoundOnCompletion { get; set; } = true;
 
     public CompletionSound CompletionSound { get; set; } = CompletionSound.StandardNotification;
+
+    public int AlertVolumePercent { get; set; } = 100;
 
     public bool PrintCompletionToChat { get; set; }
 

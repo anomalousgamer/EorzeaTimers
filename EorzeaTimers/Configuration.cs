@@ -9,7 +9,7 @@ namespace EorzeaTimers;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 8;
+    public int Version { get; set; } = 10;
 
     public List<TimerEntry> Timers { get; set; } = new();
 
@@ -63,6 +63,8 @@ public sealed class Configuration : IPluginConfiguration
         var migratingToVersionSix = Version < 6;
         var migratingToVersionSeven = Version < 7;
         var migratingToVersionEight = Version < 8;
+        var migratingToVersionNine = Version < 9;
+        var migratingToVersionTen = Version < 10;
 
         if (migratingToVersionSix)
         {
@@ -167,6 +169,48 @@ public sealed class Configuration : IPluginConfiguration
                 changed = true;
             }
 
+            if (migratingToVersionNine)
+            {
+                timer.SourceType = TimerSourceType.Manual;
+                timer.GameSource = GameTimerSource.None;
+                timer.LinkedTargetUnixSeconds = 0;
+                changed = true;
+            }
+
+            if (migratingToVersionTen)
+            {
+                timer.AlertVolumePercent = 100;
+                changed = true;
+            }
+
+            if (!Enum.IsDefined(typeof(TimerSourceType), timer.SourceType))
+            {
+                timer.SourceType = TimerSourceType.Manual;
+                changed = true;
+            }
+
+            if (!Enum.IsDefined(typeof(GameTimerSource), timer.GameSource))
+            {
+                timer.GameSource = GameTimerSource.None;
+                changed = true;
+            }
+
+            if (timer.SourceType == TimerSourceType.Manual
+                && timer.GameSource != GameTimerSource.None)
+            {
+                timer.GameSource = GameTimerSource.None;
+                timer.LinkedTargetUnixSeconds = 0;
+                changed = true;
+            }
+
+            if (timer.SourceType == TimerSourceType.GameLinked
+                && timer.GameSource == GameTimerSource.None)
+            {
+                timer.SourceType = TimerSourceType.Manual;
+                timer.LinkedTargetUnixSeconds = 0;
+                changed = true;
+            }
+
             if (!Enum.IsDefined(typeof(TimerIcon), timer.Icon))
             {
                 timer.Icon = TimerIcon.Clock;
@@ -188,6 +232,13 @@ public sealed class Configuration : IPluginConfiguration
             if (!Enum.IsDefined(typeof(CompletionSound), timer.CompletionSound))
             {
                 timer.CompletionSound = CompletionSound.StandardNotification;
+                changed = true;
+            }
+
+            var validAlertVolume = Math.Clamp(timer.AlertVolumePercent, 0, 200);
+            if (timer.AlertVolumePercent != validAlertVolume)
+            {
+                timer.AlertVolumePercent = validAlertVolume;
                 changed = true;
             }
 
@@ -317,9 +368,9 @@ public sealed class Configuration : IPluginConfiguration
             changed = true;
         }
 
-        if (Version != 8)
+        if (Version != 10)
         {
-            Version = 8;
+            Version = 10;
             changed = true;
         }
 
