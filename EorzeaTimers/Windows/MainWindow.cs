@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
@@ -58,6 +59,8 @@ public sealed class MainWindow : Window
         GameTimerSource GameSource);
 
     private readonly Plugin plugin;
+    private readonly Dictionary<GameTimerSource, GameTimerSnapshot> catalogSnapshots = new();
+    private bool openLinkedCatalog;
 
     private Guid? selectedTimerId;
     private Guid? selectionBeforeCreate;
@@ -128,6 +131,8 @@ public sealed class MainWindow : Window
         ImGui.SameLine(0, spacing);
 
         DrawEditor(new Vector2(MathF.Max(340f, available.X - listWidth - spacing), available.Y));
+
+        DrawLinkedTimerCatalog();
     }
 
     internal void OpenTimer(Guid timerId)
@@ -202,9 +207,10 @@ public sealed class MainWindow : Window
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("+ Housing Timer", new Vector2(halfWidth, 0)))
+        if (ImGui.Button("+ Linked Timer", new Vector2(halfWidth, 0)))
         {
-            BeginNewHousingTimer();
+            RefreshLinkedCatalog();
+            openLinkedCatalog = true;
         }
 
         var hasSelectedTimer = !isCreatingNew && GetSelectedTimer() is not null;
@@ -233,6 +239,134 @@ public sealed class MainWindow : Window
         }
 
         ImGui.PopStyleColor();
+    }
+
+    private void RefreshLinkedCatalog()
+    {
+        catalogSnapshots.Clear();
+        var now = DateTimeOffset.UtcNow;
+        foreach (var definition in GameLinkedTimers.Definitions)
+        {
+            if (GameLinkedTimers.TryGetSnapshot(definition.Source, now, out var snapshot))
+            {
+                catalogSnapshots[definition.Source] = snapshot;
+            }
+        }
+    }
+
+    private void DrawLinkedTimerCatalog()
+    {
+        if (openLinkedCatalog)
+        {
+            ImGui.OpenPopup("Linked Timer Catalog##EorzeaTimers");
+            openLinkedCatalog = false;
+        }
+
+        ImGui.SetNextWindowSize(
+            new Vector2(690f, 590f) * ImGuiHelpers.GlobalScale,
+            ImGuiCond.FirstUseEver);
+        if (!ImGui.BeginPopupModal(
+                "Linked Timer Catalog##EorzeaTimers",
+                ImGuiWindowFlags.NoCollapse))
+        {
+            return;
+        }
+
+        ImGui.TextWrapped(
+            "Add only the timers you want. Fixed schedules are calculated locally; character activity is added only when its game data is currently available.");
+        ImGui.Spacing();
+
+        using (var catalog = ImRaii.Child(
+                   "LinkedTimerCatalogRows",
+                   new Vector2(-1f, -ImGui.GetFrameHeightWithSpacing()),
+                   true))
+        {
+            if (catalog.Success)
+            {
+                string? currentCategory = null;
+                foreach (var definition in GameLinkedTimers.Definitions)
+                {
+                    if (!string.Equals(
+                            currentCategory,
+                            definition.Category,
+                            StringComparison.Ordinal))
+                    {
+                        if (currentCategory is not null)
+                        {
+                            ImGui.Spacing();
+                        }
+
+                        currentCategory = definition.Category;
+                        ImGui.TextColored(
+                            new Vector4(0.92f, 0.75f, 0.39f, 1f),
+                            currentCategory);
+                        ImGui.Separator();
+                    }
+
+                    DrawLinkedCatalogRow(definition);
+                }
+            }
+        }
+
+        if (ImGui.Button("Refresh Availability", new Vector2(180f * ImGuiHelpers.GlobalScale, 0f)))
+        {
+            RefreshLinkedCatalog();
+        }
+
+        ImGui.SameLine();
+        var closeWidth = 100f * ImGuiHelpers.GlobalScale;
+        ImGui.SetCursorPosX(
+            ImGui.GetCursorPosX()
+            + MathF.Max(0f, ImGui.GetContentRegionAvail().X - closeWidth));
+        if (ImGui.Button("Close", new Vector2(closeWidth, 0f)))
+        {
+            ImGui.CloseCurrentPopup();
+        }
+
+        ImGui.EndPopup();
+    }
+
+    private void DrawLinkedCatalogRow(GameTimerDefinition definition)
+    {
+        var existing = plugin.Configuration.Timers.Exists(
+            timer => timer.SourceType == TimerSourceType.GameLinked
+                && timer.GameSource == definition.Source);
+        var available = catalogSnapshots.TryGetValue(
+            definition.Source,
+            out var snapshot);
+        var buttonLabel = existing
+            ? $"Added##Catalog_{definition.Source}"
+            : available
+                ? $"Add##Catalog_{definition.Source}"
+                : $"Unavailable##Catalog_{definition.Source}";
+        var buttonWidth = 104f * ImGuiHelpers.GlobalScale;
+
+        using (ImRaii.Disabled(existing || !available))
+        {
+            if (ImGui.Button(buttonLabel, new Vector2(buttonWidth, 0f)))
+            {
+                BeginNewGameTimer(definition, snapshot);
+                ImGui.CloseCurrentPopup();
+            }
+        }
+
+        if (!available && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+        {
+            ImGui.SetTooltip(GameLinkedTimers.GetUnavailableMessage(definition.Source));
+        }
+
+        ImGui.SameLine();
+        using (Plugin.PluginInterface.UiBuilder.IconFontFixedWidthHandle.Push())
+        {
+            ImGui.TextColored(
+                TimerAppearance.GetColor(definition.Color),
+                TimerAppearance.GetIconGlyph(definition.Icon));
+        }
+
+        ImGui.SameLine();
+        ImGui.TextUnformatted(definition.Name);
+        ImGui.SameLine();
+        ImGui.TextDisabled($"- {definition.Description}");
     }
 
     private void DrawTimerGroup(string label, Func<TimerEntry, bool> predicate)
@@ -308,7 +442,10 @@ public sealed class MainWindow : Window
 
             if (ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip("Game-linked timer");
+                ImGui.SetTooltip(
+                    timer.LinkedSourceAvailable
+                        ? $"Game-linked: {timer.LinkedGeneratedNote}"
+                        : $"Game-linked source unavailable: {timer.LinkedGeneratedNote}");
             }
         }
 
@@ -384,7 +521,7 @@ public sealed class MainWindow : Window
         }
 
         ImGui.SameLine();
-        ImGui.TextDisabled("You can also toggle this by right-clicking the overlay timer.");
+        ImGui.TextDisabled("Shows custom notes and generated linked details. Right-click also toggles it.");
         ImGui.Spacing();
 
         if (editSourceType == TimerSourceType.Manual)
@@ -436,28 +573,38 @@ public sealed class MainWindow : Window
             return;
         }
 
-        if (!GameLinkedTimers.TryGetSnapshot(
-                editGameSource,
-                DateTimeOffset.UtcNow,
-                out var snapshot))
+        var selected = GetSelectedTimer();
+        GameTimerSnapshot snapshot = default;
+        var sourceAvailable = isCreatingNew
+            ? catalogSnapshots.TryGetValue(editGameSource, out snapshot)
+            : selected is not null
+                && selected.LinkedSourceAvailable
+                && TryGetCachedSnapshot(selected, out snapshot);
+        var periodEnd = sourceAvailable
+            ? DateTimeOffset.FromUnixTimeSeconds(snapshot.PeriodEndUnixSeconds).LocalDateTime
+            : selected is not null
+                ? DateTimeOffset.FromUnixTimeSeconds(selected.EndUnixSeconds).LocalDateTime
+                : DateTime.Now;
+
+        if (sourceAvailable)
         {
             ImGui.TextColored(
-                new Vector4(1f, 0.35f, 0.3f, 1f),
-                "The linked source is currently unavailable.");
-            return;
+                new Vector4(0.42f, 0.82f, 0.47f, 1f),
+                $"Linked: {snapshot.SourceName}");
+            ImGui.TextUnformatted($"Current target: {snapshot.PhaseName}");
+            ImGui.TextUnformatted($"Target time: {periodEnd:ddd, MMM d, yyyy h:mm tt}");
+            ImGui.TextDisabled(snapshot.GeneratedNote);
+        }
+        else
+        {
+            ImGui.TextColored(
+                new Vector4(1f, 0.55f, 0.25f, 1f),
+                $"Linked: {GameLinkedTimers.GetSourceName(editGameSource)} (unavailable)");
+            ImGui.TextWrapped(GameLinkedTimers.GetUnavailableMessage(editGameSource));
+            ImGui.TextDisabled(
+                "The last known target is preserved until the game supplies fresh data.");
         }
 
-        var periodEnd = DateTimeOffset
-            .FromUnixTimeSeconds(snapshot.PeriodEndUnixSeconds)
-            .LocalDateTime;
-
-        ImGui.TextColored(
-            new Vector4(0.42f, 0.82f, 0.47f, 1f),
-            $"Linked: {snapshot.SourceName}");
-        ImGui.TextUnformatted($"Current phase: {snapshot.PhaseName}");
-        ImGui.TextUnformatted($"Next transition: {periodEnd:ddd, MMM d, yyyy h:mm tt}");
-        ImGui.TextDisabled(
-            "Calculated from FFXIV's five-day entry and four-day results schedule.");
         ImGui.TextDisabled(
             "The target updates automatically; appearance, notes, and alerts remain customizable.");
 
@@ -474,6 +621,26 @@ public sealed class MainWindow : Window
                 "The timer will become manual when you save these changes.",
                 false);
         }
+    }
+
+    private static bool TryGetCachedSnapshot(
+        TimerEntry timer,
+        out GameTimerSnapshot snapshot)
+    {
+        if (timer.LinkedTargetUnixSeconds <= 0)
+        {
+            snapshot = default;
+            return false;
+        }
+
+        snapshot = new GameTimerSnapshot(
+            timer.GameSource,
+            GameLinkedTimers.GetSourceName(timer.GameSource),
+            timer.LinkedPhaseName,
+            timer.LinkedGeneratedNote,
+            DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            timer.LinkedTargetUnixSeconds);
+        return true;
     }
 
     private void DrawEditorFooter()
@@ -1096,38 +1263,34 @@ public sealed class MainWindow : Window
         validationIsError = true;
     }
 
-    private void BeginNewHousingTimer()
+    private void BeginNewGameTimer(
+        GameTimerDefinition definition,
+        GameTimerSnapshot snapshot)
     {
         var existing = plugin.Configuration.Timers.Find(
             timer => timer.SourceType == TimerSourceType.GameLinked
-                && timer.GameSource == GameTimerSource.HousingLottery);
+                && timer.GameSource == definition.Source);
         if (existing is not null)
         {
             SelectTimer(existing.Id);
             SetFooterMessage(
-                "The Housing Lottery game timer already exists, so it has been selected.",
+                $"The {definition.Name} linked timer already exists, so it has been selected.",
                 false);
             return;
         }
 
         BeginNewTimer();
         editSourceType = TimerSourceType.GameLinked;
-        editGameSource = GameTimerSource.HousingLottery;
-        editName = "Housing Lottery";
-        editIcon = TimerIcon.House;
-        editColor = TimerColor.Gold;
+        editGameSource = definition.Source;
+        editName = definition.Name;
+        editIcon = definition.Icon;
+        editColor = definition.Color;
 
-        if (GameLinkedTimers.TryGetSnapshot(
-                editGameSource,
-                DateTimeOffset.UtcNow,
-                out var snapshot))
-        {
-            var targetLocal = DateTimeOffset
-                .FromUnixTimeSeconds(snapshot.PeriodEndUnixSeconds)
-                .LocalDateTime;
-            editDate = targetLocal.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-            editTime = targetLocal.ToString("HH:mm", CultureInfo.InvariantCulture);
-        }
+        var targetLocal = DateTimeOffset
+            .FromUnixTimeSeconds(snapshot.PeriodEndUnixSeconds)
+            .LocalDateTime;
+        editDate = targetLocal.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        editTime = targetLocal.ToString("HH:mm", CultureInfo.InvariantCulture);
     }
 
     private void SelectTimer(Guid timerId)
@@ -1246,18 +1409,35 @@ public sealed class MainWindow : Window
         }
 
         long endUnixSeconds;
+        GameTimerSnapshot linkedSnapshot = default;
+        var linkedSourceAvailable = false;
         if (editSourceType == TimerSourceType.GameLinked)
         {
-            if (!GameLinkedTimers.TryGetSnapshot(
-                    editGameSource,
-                    DateTimeOffset.UtcNow,
-                    out var snapshot))
+            linkedSourceAvailable = GameLinkedTimers.TryGetSnapshot(
+                editGameSource,
+                DateTimeOffset.UtcNow,
+                out linkedSnapshot);
+            if (!linkedSourceAvailable)
             {
-                validationMessage = "The linked timer source is unavailable right now.";
-                return;
+                var existingLinkedTimer = !isCreatingNew ? GetSelectedTimer() : null;
+                if (existingLinkedTimer is null
+                    || existingLinkedTimer.GameSource != editGameSource
+                    || existingLinkedTimer.LinkedTargetUnixSeconds <= 0)
+                {
+                    validationMessage = "The linked timer source is unavailable right now.";
+                    return;
+                }
+
+                linkedSnapshot = new GameTimerSnapshot(
+                    editGameSource,
+                    GameLinkedTimers.GetSourceName(editGameSource),
+                    existingLinkedTimer.LinkedPhaseName,
+                    existingLinkedTimer.LinkedGeneratedNote,
+                    DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    existingLinkedTimer.LinkedTargetUnixSeconds);
             }
 
-            endUnixSeconds = snapshot.PeriodEndUnixSeconds;
+            endUnixSeconds = linkedSnapshot.PeriodEndUnixSeconds;
         }
         else if (!TryGetEndUnixSeconds(out endUnixSeconds))
         {
@@ -1292,6 +1472,14 @@ public sealed class MainWindow : Window
         timer.LinkedTargetUnixSeconds = editSourceType == TimerSourceType.GameLinked
             ? endUnixSeconds
             : 0;
+        timer.LinkedPhaseName = editSourceType == TimerSourceType.GameLinked
+            ? linkedSnapshot.PhaseName
+            : string.Empty;
+        timer.LinkedGeneratedNote = editSourceType == TimerSourceType.GameLinked
+            ? linkedSnapshot.GeneratedNote
+            : string.Empty;
+        timer.LinkedSourceAvailable =
+            editSourceType == TimerSourceType.GameLinked && linkedSourceAvailable;
         timer.IsActive = editIsActive;
         timer.ShowInOverlay = editShowInOverlay;
         timer.ShowNotesInOverlay = editShowNotesInOverlay;

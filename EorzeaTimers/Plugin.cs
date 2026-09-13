@@ -281,8 +281,10 @@ public sealed class Plugin : IDalamudPlugin
         ChatGui.Print("/etimers clickthrough off - Disables click-through.", ChatTag);
         ChatGui.Print("/etimers changes - Opens the changelog.", ChatTag);
         ChatGui.Print("Game-linked timers", ChatTag);
-        ChatGui.Print("Use + Housing Timer to follow the current Housing Lottery phase automatically.", ChatTag);
-        ChatGui.Print("Linked targets are automatic, but their appearance and alerts remain customizable.", ChatTag);
+        ChatGui.Print("Use + Linked Timer to browse the linked-timer catalog.", ChatTag);
+        ChatGui.Print("Fixed schedules calculate locally; character timers read loaded game data.", ChatTag);
+        ChatGui.Print("Unavailable sources are labeled instead of being guessed.", ChatTag);
+        ChatGui.Print("Linked targets are automatic, but appearance, notes, and alerts remain customizable.", ChatTag);
         ChatGui.Print("Use Convert to Manual in the editor to stop automatic schedule updates.", ChatTag);
         ChatGui.Print("Overlay controls", ChatTag);
         ChatGui.Print("Click a timer row to open that timer.", ChatTag);
@@ -380,7 +382,18 @@ public sealed class Plugin : IDalamudPlugin
         {
             timer.IsSnoozed = false;
             changed = TryRefreshGameLinkedTimer(timer) || changed;
-            completionAlertedTimerIds.Remove(timer.Id);
+
+            if (!timer.LinkedSourceAvailable
+                && GameLinkedTimers.IsActivitySource(timer.GameSource))
+            {
+                timer.IsActive = false;
+                changed = true;
+            }
+
+            if (timer.LinkedSourceAvailable)
+            {
+                completionAlertedTimerIds.Remove(timer.Id);
+            }
         }
         else if (timer.RepeatMode != TimerRepeatMode.None)
         {
@@ -637,10 +650,42 @@ public sealed class Plugin : IDalamudPlugin
                 DateTimeOffset.UtcNow,
                 out var snapshot))
         {
-            return false;
+            var unavailableNote = GameLinkedTimers.GetUnavailableMessage(timer.GameSource);
+            var unavailableChanged = false;
+            if (timer.LinkedSourceAvailable)
+            {
+                timer.LinkedSourceAvailable = false;
+                unavailableChanged = true;
+            }
+
+            if (timer.LinkedGeneratedNote != unavailableNote)
+            {
+                timer.LinkedGeneratedNote = unavailableNote;
+                unavailableChanged = true;
+            }
+
+            return unavailableChanged;
         }
 
         var changed = false;
+        if (!timer.LinkedSourceAvailable)
+        {
+            timer.LinkedSourceAvailable = true;
+            changed = true;
+        }
+
+        if (timer.LinkedPhaseName != snapshot.PhaseName)
+        {
+            timer.LinkedPhaseName = snapshot.PhaseName;
+            changed = true;
+        }
+
+        if (timer.LinkedGeneratedNote != snapshot.GeneratedNote)
+        {
+            timer.LinkedGeneratedNote = snapshot.GeneratedNote;
+            changed = true;
+        }
+
         if (timer.LinkedTargetUnixSeconds != snapshot.PeriodEndUnixSeconds)
         {
             timer.LinkedTargetUnixSeconds = snapshot.PeriodEndUnixSeconds;

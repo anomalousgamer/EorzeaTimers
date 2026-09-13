@@ -5,7 +5,7 @@
     "Punchline": "Create and track personalized timers in FFXIV.",
     "Description": "Create persistent manual and game-linked countdown timers with configurable alerts, snooze controls, and an in-game overlay.",
     "InternalName": "EorzeaTimers",
-    "AssemblyVersion": "0.7.0.0",
+    "AssemblyVersion": "0.8.0.0",
     "RepoUrl": "https://github.com/anomalousgamer/EorzeaTimers",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 15,
@@ -17,9 +17,9 @@
     "IsHide": false,
     "IsTestingExclusive": false,
     "DownloadCount": 0,
-    "LastUpdate": "1789236566",
-    "Changelog": "Stage 7 - Game-linked Housing Timer\n- Added the first game-linked source for the Housing Lottery cycle.\n- Added separate Manual Timers and Game-linked Timers sections.\n- Housing targets automatically follow the five-day entry and four-day results schedule.\n- Linked timers require no manual synchronization command or button.\n- Added Convert to Manual and linked indicators in the manager and overlay.\n- Added per-timer alert volume from 0% through 200% with live preview support.\n- Existing timers migrate to 100% volume without losing settings.\n- Save is disabled when clean; Cancel now becomes Revert Changes or Close when appropriate.",
-    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.7.0.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.7.0.0/latest.zip"
+    "LastUpdate": "1789261298",
+    "Changelog": "Stage 8 - Linked Timer Catalog\n- Added a catalog containing 37 reliable game-linked timer choices.\n- Added daily, weekly, Grand Company, allowance, scheduled-content, and character-activity timers.\n- Added Ocean Fishing, GATE, regional Jumbo Cactpot, Fashion Report, Island Sanctuary, and Cosmic Exploration schedules.\n- Added live game-data timers for maps, leves, Challenge Log, Custom Deliveries, Wondrous Tails, squadrons, retainers, island granaries, and FC voyages.\n- Moved linked phase text into toggleable generated overlay notes for compact timer rows.\n- Unavailable live sources are clearly labeled instead of guessed.\n- Fixed nullable warnings in the completion alert window.",
+    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.8.0.0/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.8.0.0/latest.zip"
   }
 ]

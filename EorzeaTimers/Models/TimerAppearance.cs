@@ -171,7 +171,11 @@ public static class TimerAppearance
 
     private static string AddScheduleStatus(TimerEntry timer, string formatted)
     {
-        var status = TimerSchedule.GetStatusText(timer);
+        // Linked phase text belongs in the optional generated note. Snooze is
+        // still important enough to remain visible in the compact main row.
+        var status = timer.SourceType == TimerSourceType.GameLinked
+            ? timer.IsSnoozed ? "Snoozed" : string.Empty
+            : TimerSchedule.GetStatusText(timer);
         return status.Length == 0 ? formatted : $"{status} · {formatted}";
     }
 

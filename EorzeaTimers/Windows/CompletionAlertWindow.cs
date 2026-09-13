@@ -103,37 +103,38 @@ public sealed class CompletionAlertWindow : Window
 
     public override void Draw()
     {
-        if (currentAlert is null)
+        var alert = currentAlert;
+        if (alert is null)
         {
             return;
         }
 
         var scale = ImGuiHelpers.GlobalScale;
-        var alertColor = TimerAppearance.GetColor(currentAlert.Color);
+        var alertColor = TimerAppearance.GetColor(alert.Color);
 
         ImGui.TextColored(
             new Vector4(0.92f, 0.75f, 0.39f, 1f),
-            currentAlert.IsTest ? "Timer Complete - Test" : "Timer Complete");
+            alert.IsTest ? "Timer Complete - Test" : "Timer Complete");
         ImGui.Separator();
         ImGui.Spacing();
 
         using (Plugin.PluginInterface.UiBuilder.IconFontFixedWidthHandle.Push())
         {
-            ImGui.TextColored(alertColor, TimerAppearance.GetIconGlyph(currentAlert.Icon));
+            ImGui.TextColored(alertColor, TimerAppearance.GetIconGlyph(alert.Icon));
         }
 
         ImGui.SameLine();
-        ImGui.TextColored(alertColor, currentAlert.Name);
+        ImGui.TextColored(alertColor, alert.Name);
         ImGui.Indent(30f * scale);
         ImGui.TextWrapped(
-            currentAlert.IsTest
+            alert.IsTest
                 ? "This is a test completion alert."
                 : "Your timer has finished!");
 
-        if (!string.IsNullOrWhiteSpace(currentAlert.Notes))
+        if (!string.IsNullOrWhiteSpace(alert.Notes))
         {
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.72f, 0.75f, 0.80f, 1f));
-            ImGui.TextWrapped(currentAlert.Notes);
+            ImGui.TextWrapped(alert.Notes);
             ImGui.PopStyleColor();
         }
 
@@ -150,7 +151,7 @@ public sealed class CompletionAlertWindow : Window
 
         ImGui.Spacing();
 
-        if (currentAlert.IsTest || !currentAlert.TimerId.HasValue)
+        if (alert.IsTest || !alert.TimerId.HasValue)
         {
             if (ImGui.Button("Dismiss", new Vector2(-1f, 0f)))
             {
@@ -160,13 +161,13 @@ public sealed class CompletionAlertWindow : Window
             return;
         }
 
+        var timerId = alert.TimerId.Value;
+
         DrawSnoozeSelector();
         ImGui.Spacing();
 
-        var timerId = currentAlert.TimerId.Value;
         var buttonWidth =
             (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X) / 2f;
-
         if (ImGui.Button("Dismiss", new Vector2(buttonWidth, 0f)))
         {
             plugin.DismissCompletionAlert(timerId);

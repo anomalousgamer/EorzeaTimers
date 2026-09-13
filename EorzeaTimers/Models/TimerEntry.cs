@@ -21,6 +21,14 @@ public sealed class TimerEntry
     // game-linked alert can be snoozed without breaking its schedule link.
     public long LinkedTargetUnixSeconds { get; set; }
 
+    // Cached once per linked-timer refresh so the overlay never reads game
+    // memory every frame merely to draw its optional generated note.
+    public string LinkedPhaseName { get; set; } = string.Empty;
+
+    public string LinkedGeneratedNote { get; set; } = string.Empty;
+
+    public bool LinkedSourceAvailable { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     public bool ShowInOverlay { get; set; } = true;

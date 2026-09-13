@@ -9,7 +9,7 @@ namespace EorzeaTimers;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 10;
+    public int Version { get; set; } = 11;
 
     public List<TimerEntry> Timers { get; set; } = new();
 
@@ -65,6 +65,7 @@ public sealed class Configuration : IPluginConfiguration
         var migratingToVersionEight = Version < 8;
         var migratingToVersionNine = Version < 9;
         var migratingToVersionTen = Version < 10;
+        var migratingToVersionEleven = Version < 11;
 
         if (migratingToVersionSix)
         {
@@ -180,6 +181,26 @@ public sealed class Configuration : IPluginConfiguration
             if (migratingToVersionTen)
             {
                 timer.AlertVolumePercent = 100;
+                changed = true;
+            }
+
+            if (migratingToVersionEleven)
+            {
+                timer.LinkedPhaseName = string.Empty;
+                timer.LinkedGeneratedNote = string.Empty;
+                timer.LinkedSourceAvailable = false;
+                changed = true;
+            }
+
+            if (timer.LinkedPhaseName is null)
+            {
+                timer.LinkedPhaseName = string.Empty;
+                changed = true;
+            }
+
+            if (timer.LinkedGeneratedNote is null)
+            {
+                timer.LinkedGeneratedNote = string.Empty;
                 changed = true;
             }
 
@@ -368,9 +389,9 @@ public sealed class Configuration : IPluginConfiguration
             changed = true;
         }
 
-        if (Version != 10)
+        if (Version != 11)
         {
-            Version = 10;
+            Version = 11;
             changed = true;
         }
 

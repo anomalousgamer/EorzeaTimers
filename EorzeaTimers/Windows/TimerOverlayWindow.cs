@@ -204,16 +204,21 @@ public sealed class TimerOverlayWindow : Window
     private void DrawTimerRow(TimerEntry timer)
     {
         var configuration = plugin.Configuration;
-        var showNotes =
+        var showGeneratedNote =
+            timer.ShowNotesInOverlay
+            && timer.SourceType == TimerSourceType.GameLinked
+            && !string.IsNullOrWhiteSpace(timer.LinkedGeneratedNote);
+        var showCustomNote =
             timer.ShowNotesInOverlay && !string.IsNullOrWhiteSpace(timer.Notes);
+        var noteLineCount = (showGeneratedNote ? 1 : 0) + (showCustomNote ? 1 : 0);
         var remainingText = TimerAppearance.FormatTimer(timer);
         var rowStart = ImGui.GetCursorPos();
         var globalScale = ImGuiHelpers.GlobalScale;
         var lineHeight = ImGui.GetTextLineHeight();
         var padding = ImGui.GetStyle().FramePadding;
-        var rowHeight = showNotes
-            ? lineHeight * 1.82f + padding.Y * 3f
-            : lineHeight + padding.Y * 2f;
+        var rowHeight = lineHeight
+            + noteLineCount * lineHeight * 0.82f
+            + padding.Y * (noteLineCount > 0 ? 3f : 2f);
         var rowWidth = MathF.Max(1f, ImGui.GetContentRegionAvail().X);
 
         ImGui.InvisibleButton(
@@ -287,13 +292,25 @@ public sealed class TimerOverlayWindow : Window
         ImGui.SetCursorPos(new Vector2(remainingX, nameY));
         ImGui.TextColored(new Vector4(0.95f, 0.88f, 0.70f, 1f), remainingText);
 
-        if (showNotes)
+        if (noteLineCount > 0)
         {
-            ImGui.SetCursorPos(
-                new Vector2(textStartX, nameY + lineHeight + padding.Y * 0.5f));
             var normalScale = Math.Clamp(configuration.OverlayScale, 0.75f, 2f);
             ImGui.SetWindowFontScale(normalScale * 0.82f);
-            ImGui.TextDisabled(timer.Notes);
+
+            var noteY = nameY + lineHeight + padding.Y * 0.5f;
+            if (showGeneratedNote)
+            {
+                ImGui.SetCursorPos(new Vector2(textStartX, noteY));
+                ImGui.TextDisabled(timer.LinkedGeneratedNote);
+                noteY += lineHeight * 0.82f;
+            }
+
+            if (showCustomNote)
+            {
+                ImGui.SetCursorPos(new Vector2(textStartX, noteY));
+                ImGui.TextDisabled(timer.Notes);
+            }
+
             ImGui.SetWindowFontScale(normalScale);
         }
 
