@@ -36,6 +36,7 @@ public sealed class MainWindow : Window
         string Time,
         bool IsActive,
         bool ShowInOverlay,
+        bool OverlayDetached,
         bool ShowNotesInOverlay,
         bool ShowCompletionPopup,
         bool PlaySoundOnCompletion,
@@ -72,6 +73,7 @@ public sealed class MainWindow : Window
     private string editTime = string.Empty;
     private bool editIsActive = true;
     private bool editShowInOverlay = true;
+    private bool editOverlayDetached;
     private bool editShowNotesInOverlay;
     private bool editShowCompletionPopup = true;
     private bool editPlaySoundOnCompletion = true;
@@ -514,6 +516,11 @@ public sealed class MainWindow : Window
 
         ImGui.SameLine();
         ImGui.TextDisabled("The timer keeps counting when hidden from the overlay.");
+
+        if (editShowInOverlay && ImGui.Checkbox("Undock from main overlay", ref editOverlayDetached))
+        {
+            validationMessage = string.Empty;
+        }
 
         if (ImGui.Checkbox("Show notes in overlay", ref editShowNotesInOverlay))
         {
@@ -1237,6 +1244,7 @@ public sealed class MainWindow : Window
         editTime = defaultTarget.ToString("HH:mm", CultureInfo.InvariantCulture);
         editIsActive = true;
         editShowInOverlay = true;
+        editOverlayDetached = false;
         editShowNotesInOverlay = false;
         editShowCompletionPopup = true;
         editPlaySoundOnCompletion = true;
@@ -1318,6 +1326,7 @@ public sealed class MainWindow : Window
         editTime = targetLocal.ToString("HH:mm", CultureInfo.InvariantCulture);
         editIsActive = timer.IsActive;
         editShowInOverlay = timer.ShowInOverlay;
+        editOverlayDetached = timer.OverlayDetached;
         editShowNotesInOverlay = timer.ShowNotesInOverlay;
         editShowCompletionPopup = timer.ShowCompletionPopup;
         editPlaySoundOnCompletion = timer.PlaySoundOnCompletion;
@@ -1482,6 +1491,7 @@ public sealed class MainWindow : Window
             editSourceType == TimerSourceType.GameLinked && linkedSourceAvailable;
         timer.IsActive = editIsActive;
         timer.ShowInOverlay = editShowInOverlay;
+        timer.OverlayDetached = editOverlayDetached;
         timer.ShowNotesInOverlay = editShowNotesInOverlay;
         timer.ShowCompletionPopup = editShowCompletionPopup;
         timer.PlaySoundOnCompletion = editPlaySoundOnCompletion;
@@ -1618,6 +1628,7 @@ public sealed class MainWindow : Window
             LinkedTargetUnixSeconds = 0,
             IsActive = source.IsActive,
             ShowInOverlay = source.ShowInOverlay,
+            OverlayDetached = source.OverlayDetached,
             ShowNotesInOverlay = source.ShowNotesInOverlay,
             ShowCompletionPopup = source.ShowCompletionPopup,
             PlaySoundOnCompletion = source.PlaySoundOnCompletion,
@@ -1704,6 +1715,7 @@ public sealed class MainWindow : Window
             editTime,
             editIsActive,
             editShowInOverlay,
+            editOverlayDetached,
             editShowNotesInOverlay,
             editShowCompletionPopup,
             editPlaySoundOnCompletion,

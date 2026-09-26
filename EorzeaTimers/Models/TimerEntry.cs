@@ -33,6 +33,14 @@ public sealed class TimerEntry
 
     public bool ShowInOverlay { get; set; } = true;
 
+    public bool OverlayDetached { get; set; }
+
+    public bool DetachedPositionSet { get; set; }
+
+    public float DetachedPositionX { get; set; }
+
+    public float DetachedPositionY { get; set; }
+
     public bool ShowNotesInOverlay { get; set; }
 
     public bool ShowCompletionPopup { get; set; } = true;

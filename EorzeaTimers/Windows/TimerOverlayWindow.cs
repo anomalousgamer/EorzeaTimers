@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Conditions;
@@ -11,8 +12,11 @@ namespace EorzeaTimers.Windows;
 public sealed class TimerOverlayWindow : Window
 {
     private const int StableFramesBeforePositionSave = 8;
+    private const float DockSnapDistance = 22f;
+    private static readonly List<TimerOverlayWindow> Instances = new();
 
     private readonly Plugin plugin;
+    private readonly Guid? detachedTimerId;
     private bool positionNeedsApply = true;
     private Vector2? pendingPosition;
     private int stablePositionFrames;
@@ -20,11 +24,18 @@ public sealed class TimerOverlayWindow : Window
     private bool resizeDragging;
     private bool resizeDirty;
     private bool overlayStylePushed;
+    private Vector2 lastPosition;
+    private Vector2 lastSize;
+    private bool visibleThisFrame;
 
-    public TimerOverlayWindow(Plugin plugin)
-        : base("Eorzea Timers###EorzeaTimersOverlay")
+    public TimerOverlayWindow(Plugin plugin, Guid? detachedTimerId = null)
+        : base(detachedTimerId.HasValue
+            ? $"Eorzea Timer###EorzeaTimersOverlay_{detachedTimerId.Value}"
+            : "Eorzea Timers###EorzeaTimersOverlay")
     {
         this.plugin = plugin;
+        this.detachedTimerId = detachedTimerId;
+        Instances.Add(this);
 
         IsOpen = true;
         ShowCloseButton = false;
@@ -38,6 +49,17 @@ public sealed class TimerOverlayWindow : Window
     public override bool DrawConditions()
     {
         var configuration = plugin.Configuration;
+        visibleThisFrame = false;
+
+        if (detachedTimerId.HasValue)
+        {
+            var detached = configuration.Timers.Find(timer => timer.Id == detachedTimerId.Value);
+            if (detached is null || !detached.OverlayDetached
+                || !detached.IsActive || !detached.ShowInOverlay)
+            {
+                return false;
+            }
+        }
 
         if (!Plugin.PlayerState.IsLoaded
             || configuration.OverlayMode == OverlayDisplayMode.Off)
@@ -54,7 +76,8 @@ public sealed class TimerOverlayWindow : Window
 
         if (configuration.OverlayHideWhenNoActiveTimers
             && !configuration.Timers.Exists(
-                timer => timer.IsActive && timer.ShowInOverlay))
+                timer => timer.IsActive && timer.ShowInOverlay
+                    && (detachedTimerId.HasValue || !timer.OverlayDetached)))
         {
             return false;
         }
@@ -88,6 +111,7 @@ public sealed class TimerOverlayWindow : Window
             return false;
         }
 
+        visibleThisFrame = true;
         return true;
     }
 
@@ -119,9 +143,16 @@ public sealed class TimerOverlayWindow : Window
             MaximumSize = new Vector2(width, float.MaxValue),
         };
 
+        var detached = detachedTimerId.HasValue
+            ? configuration.Timers.Find(timer => timer.Id == detachedTimerId.Value)
+            : null;
         if (positionNeedsApply)
         {
-            Position = configuration.OverlayPositionSet
+            Position = detached is not null && detached.DetachedPositionSet
+                ? new Vector2(detached.DetachedPositionX, detached.DetachedPositionY)
+                : detached is not null
+                    ? GetDefaultPosition(width) - new Vector2(0f, 80f)
+                : configuration.OverlayPositionSet
                 ? new Vector2(
                     configuration.OverlayPositionX,
                     configuration.OverlayPositionY)
@@ -138,7 +169,8 @@ public sealed class TimerOverlayWindow : Window
         }
 
         ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.035f, 0.04f, 0.05f, 1f));
-        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.78f, 0.61f, 0.28f, 1f));
+        ImGui.PushStyleColor(ImGuiCol.Border,
+            TimerAppearance.GetColor(configuration.OverlayBorderColor));
         ImGui.PushStyleColor(ImGuiCol.Separator, new Vector4(0.60f, 0.47f, 0.23f, 0.72f));
         ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 1f);
         ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 6f);
@@ -153,7 +185,10 @@ public sealed class TimerOverlayWindow : Window
         var drewTimer = false;
         foreach (var timer in configuration.Timers)
         {
-            if (!timer.IsActive || !timer.ShowInOverlay)
+            if (!timer.IsActive || !timer.ShowInOverlay
+                || (detachedTimerId.HasValue
+                    ? timer.Id != detachedTimerId.Value
+                    : timer.OverlayDetached))
             {
                 continue;
             }
@@ -172,10 +207,20 @@ public sealed class TimerOverlayWindow : Window
             DrawEmptyRow();
         }
 
-        DrawResizeGrip();
+        if (!detachedTimerId.HasValue)
+        {
+            DrawResizeGrip();
+        }
+
+        lastPosition = ImGui.GetWindowPos();
+        lastSize = ImGui.GetWindowSize();
 
         if (!ImGui.IsMouseDown(ImGuiMouseButton.Left))
         {
+            if (rowDragOccurred && detachedTimerId.HasValue)
+            {
+                TryDock();
+            }
             rowDragOccurred = false;
         }
 
@@ -199,6 +244,45 @@ public sealed class TimerOverlayWindow : Window
         positionNeedsApply = true;
         pendingPosition = null;
         stablePositionFrames = 0;
+    }
+
+    internal void Unregister() => Instances.Remove(this);
+
+    private void TryDock()
+    {
+        if (detachedTimerId is not Guid timerId)
+        {
+            return;
+        }
+
+        foreach (var other in Instances)
+        {
+            if (other == this || !other.visibleThisFrame || other.lastSize.X <= 0f)
+            {
+                continue;
+            }
+
+            var mineMin = lastPosition - new Vector2(DockSnapDistance);
+            var mineMax = lastPosition + lastSize + new Vector2(DockSnapDistance);
+            var theirMin = other.lastPosition;
+            var theirMax = other.lastPosition + other.lastSize;
+            if (mineMin.X > theirMax.X || mineMax.X < theirMin.X
+                || mineMin.Y > theirMax.Y || mineMax.Y < theirMin.Y)
+            {
+                continue;
+            }
+
+            var timer = plugin.Configuration.Timers.Find(t => t.Id == timerId);
+            if (timer is null)
+            {
+                return;
+            }
+
+            timer.OverlayDetached = false;
+            timer.DetachedPositionSet = false;
+            plugin.Configuration.Save();
+            return;
+        }
     }
 
     private void DrawTimerRow(TimerEntry timer)
@@ -337,7 +421,7 @@ public sealed class TimerOverlayWindow : Window
     private void HandleRowInteraction(Guid? timerId)
     {
         var configuration = plugin.Configuration;
-        var mouseOverResizeGrip = IsMouseOverResizeGrip();
+        var mouseOverResizeGrip = !detachedTimerId.HasValue && IsMouseOverResizeGrip();
         var canInteract =
             !configuration.OverlayClickThrough
             && !resizeDragging
@@ -480,11 +564,14 @@ public sealed class TimerOverlayWindow : Window
         }
 
         var configuration = plugin.Configuration;
-        var savedPosition = new Vector2(
-            configuration.OverlayPositionX,
-            configuration.OverlayPositionY);
+        var detached = detachedTimerId.HasValue
+            ? configuration.Timers.Find(timer => timer.Id == detachedTimerId.Value)
+            : null;
+        var savedPosition = detached is not null
+            ? new Vector2(detached.DetachedPositionX, detached.DetachedPositionY)
+            : new Vector2(configuration.OverlayPositionX, configuration.OverlayPositionY);
 
-        if (configuration.OverlayPositionSet
+        if ((detached?.DetachedPositionSet ?? configuration.OverlayPositionSet)
             && Vector2.DistanceSquared(currentPosition, savedPosition) < 0.25f)
         {
             pendingPosition = null;
@@ -508,9 +595,18 @@ public sealed class TimerOverlayWindow : Window
             return;
         }
 
-        configuration.OverlayPositionX = currentPosition.X;
-        configuration.OverlayPositionY = currentPosition.Y;
-        configuration.OverlayPositionSet = true;
+        if (detached is not null)
+        {
+            detached.DetachedPositionX = currentPosition.X;
+            detached.DetachedPositionY = currentPosition.Y;
+            detached.DetachedPositionSet = true;
+        }
+        else
+        {
+            configuration.OverlayPositionX = currentPosition.X;
+            configuration.OverlayPositionY = currentPosition.Y;
+            configuration.OverlayPositionSet = true;
+        }
         configuration.Save();
 
         pendingPosition = null;

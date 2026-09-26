@@ -1,8 +1,20 @@
 # Eorzea Timers
 
+## 0.8.9.0 Preview
+
+This preview includes planned 0.9 overlay border colors and detachable timers. Select a border color in Overlay Settings. In a timer's editor, choose **Undock from main overlay** and save to move it independently; drag it onto another overlay to dock it again.
+
+After login, Eorzea Timers checks Dalamud's plugin repository for available updates and shows a notification plus a chat message once per available version. It checks again about every 12 minutes while you are logged in. Use `/etimers checkupdates` to check on demand; install an available version through `/xlplugins`. The existing post-install changelog still appears for a new version until dismissed with its per-version setting.
+
+To help research automatic FC vessel timers, enable `/etimers vesselprobe on`, log out and back in, then visit Ctrl+U > Estate > Exploratory/Subaquatic Voyages and run `/etimers vesselprobe now`. Search the Dalamud log for `[Vessel probe]`. Use `/etimers vesselprobe off` when finished. The probe only reads mapped game state. It does not fetch remote Estate data or create new submarine/airship timers yet.
+
 A customizable timer plugin for FFXIV and Dalamud.
 
-## Version 0.8.0.0
+## License
+
+Eorzea Timers is open source under the MIT License. You may use, modify, and distribute the project, including in your own work, as long as you retain the license and copyright notice. See `LICENSE.md`.
+
+## Stage 8 linked timer catalog
 
 Stage 8 expands the original Housing Lottery integration into a categorized catalog of 37 selectable linked timers. Add only the timers you want; every linked timer keeps its automatic target while allowing custom names, notes, icons, colors, alerts, sounds, volume, and overlay visibility.
 
@@ -102,6 +114,7 @@ Linked phase text is no longer forced into the main countdown row. It is generat
 - Queued completion popups and duplicate-alert prevention.
 - Context-sensitive Save, Cancel, Revert Changes, Close, and Restart controls.
 - A per-version changelog shown three seconds after the character is fully loaded.
+- A Dalamud notification and chat message when a newer plugin version becomes available.
 
 Alert volume above 100% is experimental. FFXIV may clamp louder values or introduce distortion depending on the sound and game audio settings.
 
@@ -117,7 +130,9 @@ Alert volume above 100% is experimental. FFXIV may clamp louder values or introd
 - `/etimers clickthrough on` - Enable overlay click-through.
 - `/etimers clickthrough off` - Disable overlay click-through.
 - `/etimers changes` - Reopen the current changelog.
+- `/etimers checkupdates` - Check Dalamud's repository for an available plugin update.
+- `/etimers vesselprobe on|off|now` - Opt-in read-only voyage diagnostics in the Dalamud log.
 
-## Development build
+## Release testing
 
-Build the solution in Visual Studio and add the generated `EorzeaTimers.dll` as a Dalamud dev plugin.
+Build Release x64 in Visual Studio and publish the generated `latest.zip` through the project's existing GitHub release and `repo.json` workflow. Testers update through the published repository. See `TESTING-0.8.9.0.md` for the update notification and vessel probe test steps.

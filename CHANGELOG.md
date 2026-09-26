@@ -1,3 +1,14 @@
+## 0.8.9.0 - Preview: 0.9 Overlay Features and Vessel Probe
+
+- Added selectable overlay border colors.
+- Added a per-timer option to undock a timer into its own movable overlay; dragging it onto another overlay docks it back into the main list.
+- Added `/etimers vesselprobe on|off|now` as an opt-in, read-only probe. It records available ContentsTimer agent state and workshop voyage data after login or on request in the Dalamud log.
+- Added a Dalamud notification and chat message once per newly available plugin version after login, with periodic checks while logged in. `/etimers checkupdates` reports availability on demand. The installed-version changelog remains separate.
+- Clarified that the project is open source under the MIT License and uses the Anomaly author name in its copyright notice and project metadata.
+- The probe does not open or click game UI, send requests, or create voyage timers. The remote Estate data source and exact headless refresh path still require a Windows client trace.
+- Kept the existing Stage 8 linked timer catalog and timer configuration.
+- Reserve 0.9.0.0 for the confirmed release after testing.
+
 ## 0.8.0.0 - Stage 8: Linked Timer Catalog
 
 - Expanded the Housing Lottery integration into a categorized catalog of 37 selectable linked timers.

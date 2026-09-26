@@ -9,7 +9,7 @@ namespace EorzeaTimers;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 11;
+    public int Version { get; set; } = 12;
 
     public List<TimerEntry> Timers { get; set; } = new();
 
@@ -46,6 +46,11 @@ public sealed class Configuration : IPluginConfiguration
     public float OverlayWidth { get; set; } = 280f;
 
     public float OverlayOpacity { get; set; } = 0.9f;
+
+    public TimerColor OverlayBorderColor { get; set; } = TimerColor.Gold;
+
+    // Opt-in temporary probe for the preview release. No requests are sent.
+    public bool VesselDiagnosticsEnabled { get; set; }
 
     public OverlayRowStyle OverlayRowStyle { get; set; } = OverlayRowStyle.Compact;
 
@@ -128,6 +133,16 @@ public sealed class Configuration : IPluginConfiguration
             if (timer.Notes is null)
             {
                 timer.Notes = string.Empty;
+                changed = true;
+            }
+
+            if (timer.DetachedPositionSet
+                && (!float.IsFinite(timer.DetachedPositionX)
+                    || !float.IsFinite(timer.DetachedPositionY)))
+            {
+                timer.DetachedPositionSet = false;
+                timer.DetachedPositionX = 0f;
+                timer.DetachedPositionY = 0f;
                 changed = true;
             }
 
@@ -352,6 +367,12 @@ public sealed class Configuration : IPluginConfiguration
             changed = true;
         }
 
+        if (!Enum.IsDefined(typeof(TimerColor), OverlayBorderColor))
+        {
+            OverlayBorderColor = TimerColor.Gold;
+            changed = true;
+        }
+
         var validScale = Math.Clamp(OverlayScale, 0.75f, 2f);
         if (OverlayScale != validScale)
         {
@@ -389,9 +410,9 @@ public sealed class Configuration : IPluginConfiguration
             changed = true;
         }
 
-        if (Version != 11)
+        if (Version != 12)
         {
-            Version = 11;
+            Version = 12;
             changed = true;
         }
 

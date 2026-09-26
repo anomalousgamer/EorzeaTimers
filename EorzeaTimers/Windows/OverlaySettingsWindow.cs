@@ -174,6 +174,29 @@ public sealed class OverlaySettingsWindow : Window
         ImGui.TextDisabled(
             "Overlay notes are controlled separately for each timer in its editor or by right-clicking its overlay row.");
 
+        ImGui.SetNextItemWidth(220f * ImGuiHelpers.GlobalScale);
+        if (ImGui.BeginCombo("Border color", TimerAppearance.GetColorName(configuration.OverlayBorderColor)))
+        {
+            foreach (var color in TimerAppearance.Colors)
+            {
+                var selected = configuration.OverlayBorderColor == color;
+                if (ImGui.Selectable(TimerAppearance.GetColorName(color), selected))
+                {
+                    configuration.OverlayBorderColor = color;
+                    changed = true;
+                }
+
+                if (selected)
+                {
+                    ImGui.SetItemDefaultFocus();
+                }
+            }
+
+            ImGui.EndCombo();
+        }
+
+        ImGui.TextDisabled("Undock a timer in its editor. Drag it onto another overlay to dock it again.");
+
         ImGui.Spacing();
         ImGui.TextColored(new Vector4(0.92f, 0.75f, 0.39f, 1f), "Visibility");
         ImGui.Separator();
@@ -240,6 +263,7 @@ public sealed class OverlaySettingsWindow : Window
             configuration.OverlayScale = DefaultScale;
             configuration.OverlayWidth = DefaultWidth;
             configuration.OverlayOpacity = DefaultOpacity;
+            configuration.OverlayBorderColor = TimerColor.Gold;
             configuration.Save();
         }
 
