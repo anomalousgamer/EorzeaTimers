@@ -1,12 +1,16 @@
 # Eorzea Timers
 
-## 0.8.9.0 Preview
+## 0.8.9.1 Preview
 
 This preview includes planned 0.9 overlay border colors and detachable timers. Select a border color in Overlay Settings. In a timer's editor, choose **Undock from main overlay** and save to move it independently; drag it onto another overlay to dock it again.
 
 After login, Eorzea Timers checks Dalamud's plugin repository for available updates and shows a notification plus a chat message once per available version. It checks again about every 12 minutes while you are logged in. Use `/etimers checkupdates` to check on demand; install an available version through `/xlplugins`. The existing post-install changelog still appears for a new version until dismissed with its per-version setting.
 
-To help research automatic FC vessel timers, enable `/etimers vesselprobe on`, log out and back in, then visit Ctrl+U > Estate > Exploratory/Subaquatic Voyages and run `/etimers vesselprobe now`. Search the Dalamud log for `[Vessel probe]`. Use `/etimers vesselprobe off` when finished. The probe only reads mapped game state. It does not fetch remote Estate data or create new submarine/airship timers yet.
+Open `/etimers vesselprobe` for the in-game vessel report. Enable capture, follow its labeled checkpoints, and use **Stop & copy report** to paste the results into a support conversation. Long reports also have numbered copyable parts. No log-file search is needed for the normal test. Capture stays enabled across a game restart; report contents are held in memory and must be copied before unloading the plugin. See `TESTING-0.8.9.1.md` for the clean-login test with one deployed vessel and one idle vessel.
+
+The probe observes related game window names, agent IDs, setup/refresh values, UI events, displayed text, and mapped workshop data. Numeric observations are not yet confirmed remote return timestamps. It does not send a headless refresh request or create per-vessel timers automatically. Capture stops collecting after 15 minutes of a logged-in session or roughly 60,000 report characters.
+
+The startup changelog now wraps inside a scrolling area with its dismissal controls below. Long descriptions, completion titles, timer names, and overlay notes wrap too. Rows expand to fit, and long overlay titles move the countdown onto a separate line. The confirmed release remains reserved for 0.9.0.0.
 
 A customizable timer plugin for FFXIV and Dalamud.
 
@@ -131,8 +135,9 @@ Alert volume above 100% is experimental. FFXIV may clamp louder values or introd
 - `/etimers clickthrough off` - Disable overlay click-through.
 - `/etimers changes` - Reopen the current changelog.
 - `/etimers checkupdates` - Check Dalamud's repository for an available plugin update.
-- `/etimers vesselprobe on|off|now` - Opt-in read-only voyage diagnostics in the Dalamud log.
+- `/etimers vesselprobe` - Open the in-game vessel report and test instructions.
+- `/etimers vesselprobe on|off|now` - Enable capture, stop capture, or add a manual checkpoint.
 
 ## Release testing
 
-Build Release x64 in Visual Studio and publish the generated `latest.zip` through the project's existing GitHub release and `repo.json` workflow. Testers update through the published repository. See `TESTING-0.8.9.0.md` for the update notification and vessel probe test steps.
+Build Release x64 in Visual Studio and publish the generated `latest.zip` through the project's existing GitHub release and `repo.json` workflow. Testers update through the published repository. See `TESTING-0.8.9.1.md` for the update notification and vessel probe test steps.

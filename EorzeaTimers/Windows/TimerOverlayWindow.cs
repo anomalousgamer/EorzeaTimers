@@ -250,11 +250,6 @@ public sealed class TimerOverlayWindow : Window
 
     private void TryDock()
     {
-        if (detachedTimerId is not Guid timerId)
-        {
-            return;
-        }
-
         foreach (var other in Instances)
         {
             if (other == this || !other.visibleThisFrame || other.lastSize.X <= 0f)
@@ -272,7 +267,7 @@ public sealed class TimerOverlayWindow : Window
                 continue;
             }
 
-            var timer = plugin.Configuration.Timers.Find(t => t.Id == timerId);
+            var timer = plugin.Configuration.Timers.Find(t => t.Id == detachedTimerId.Value);
             if (timer is null)
             {
                 return;

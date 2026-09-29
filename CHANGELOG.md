@@ -1,3 +1,16 @@
+## 0.8.9.1 - Preview: In-game Vessel Reports and Text Wrapping
+
+- Added `/etimers vesselprobe` to open an in-game diagnostic window with labeled checkpoints, a report preview, and **Stop & copy report**.
+- Added numbered copyable parts for reports that are too long for one message.
+- Capture can remain enabled across a full game restart for a clean-login baseline. Reports stay in memory until the plugin unloads; copying stops capture.
+- The read-only probe discovers addon names and associated agent IDs, observes relevant setup/refresh values and UI events, and records related window text separately from raw numeric values.
+- Added an optional discovered-addon selector for investigating a voyage window not matched automatically.
+- Bounded capture to 15 minutes per logged-in session and approximately 60,000 report characters. Repeated unchanged values are omitted.
+- Wrapped the startup changelog and added a scrolling body that leaves its dismissal controls accessible.
+- Wrapped long settings descriptions, linked-catalog descriptions, completion titles, editor status messages, timer names, and overlay notes. Timer rows grow to fit; long overlay names move their countdown below the title.
+- Retained the nullable timer-ID fix in overlay docking and all previous 0.9 preview features, update notifications, and saved timer settings.
+- Automatic per-vessel creation and invisible login refresh remain under research; this build does not send game requests or automate game UI.
+
 ## 0.8.9.0 - Preview: 0.9 Overlay Features and Vessel Probe
 
 - Added selectable overlay border colors.
