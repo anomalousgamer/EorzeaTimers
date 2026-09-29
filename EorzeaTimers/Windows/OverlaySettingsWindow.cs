@@ -83,7 +83,7 @@ public sealed class OverlaySettingsWindow : Window
                 ImGui.EndCombo();
             }
 
-            ImGui.TextDisabled(
+            TextLayout.DisabledWrapped(
                 $"Hold {OverlayKeys.GetName(configuration.OverlayHoldKey)} to show the overlay.");
             ImGui.Unindent(24f * ImGuiHelpers.GlobalScale);
         }
@@ -111,9 +111,9 @@ public sealed class OverlaySettingsWindow : Window
             "While enabled, the overlay ignores all mouse input. Disable it from this settings window or use /etimers clickthrough off.");
         ImGui.PopStyleColor();
 
-        ImGui.TextDisabled("Left-click a timer to open it. Right-click to toggle its notes.");
-        ImGui.TextDisabled("Drag a timer row to move the overlay.");
-        ImGui.TextDisabled("Drag the bottom-right grip to change the overlay width.");
+        TextLayout.DisabledWrapped("Left-click a timer to open it. Right-click to toggle its notes.");
+        TextLayout.DisabledWrapped("Drag a timer row to move the overlay.");
+        TextLayout.DisabledWrapped("Drag the bottom-right grip to change the overlay width.");
 
         ImGui.Spacing();
         ImGui.TextColored(new Vector4(0.92f, 0.75f, 0.39f, 1f), "Size and style");
@@ -171,7 +171,7 @@ public sealed class OverlaySettingsWindow : Window
             changed = true;
         }
 
-        ImGui.TextDisabled(
+        TextLayout.DisabledWrapped(
             "Overlay notes are controlled separately for each timer in its editor or by right-clicking its overlay row.");
 
         ImGui.SetNextItemWidth(220f * ImGuiHelpers.GlobalScale);
@@ -195,7 +195,7 @@ public sealed class OverlaySettingsWindow : Window
             ImGui.EndCombo();
         }
 
-        ImGui.TextDisabled("Undock a timer in its editor. Drag it onto another overlay to dock it again.");
+        TextLayout.DisabledWrapped("Undock a timer in its editor. Drag it onto another overlay to dock it again.");
 
         ImGui.Spacing();
         ImGui.TextColored(new Vector4(0.92f, 0.75f, 0.39f, 1f), "Visibility");
@@ -268,7 +268,7 @@ public sealed class OverlaySettingsWindow : Window
         }
 
         ImGui.Spacing();
-        ImGui.TextDisabled("Use /etimers help for the complete command and overlay guide.");
+        TextLayout.DisabledWrapped("Use /etimers help for the complete command and overlay guide.");
     }
 
     private bool DrawModeRadio(
@@ -285,8 +285,9 @@ public sealed class OverlaySettingsWindow : Window
             changed = true;
         }
 
-        ImGui.SameLine();
-        ImGui.TextDisabled(description);
+        ImGui.Indent(24f * ImGuiHelpers.GlobalScale);
+        TextLayout.DisabledWrapped(description);
+        ImGui.Unindent(24f * ImGuiHelpers.GlobalScale);
         return changed;
     }
 }

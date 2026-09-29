@@ -1,6 +1,7 @@
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 
 namespace EorzeaTimers.Windows;
@@ -25,21 +26,23 @@ public sealed class ChangelogWindow : Window
 
     public override void Draw()
     {
-        ImGui.TextUnformatted($"Version {Plugin.CurrentVersion}");
-        ImGui.TextColored(new Vector4(0.85f, 0.70f, 0.35f, 1f), Changelog.Title);
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        foreach (var change in Changelog.Latest)
-        {
-            ImGui.BulletText(change);
-        }
-
         var footerHeight = ImGui.GetFrameHeightWithSpacing() * 2f + 8f * ImGuiHelpers.GlobalScale;
-        var remainingHeight = ImGui.GetContentRegionAvail().Y;
-        if (remainingHeight > footerHeight)
+        using (var body = ImRaii.Child("ChangelogBody", new Vector2(-1, -footerHeight), false))
         {
-            ImGui.Dummy(new Vector2(1, remainingHeight - footerHeight));
+            if (body.Success)
+            {
+                ImGui.TextUnformatted($"Version {Plugin.CurrentVersion}");
+                TextLayout.ColoredWrapped(new Vector4(0.85f, 0.70f, 0.35f, 1f), Changelog.Title);
+                ImGui.Separator();
+                ImGui.Spacing();
+                foreach (var change in Changelog.Latest)
+                {
+                    ImGui.Bullet();
+                    ImGui.SameLine();
+                    ImGui.TextWrapped(change);
+                    ImGui.Spacing();
+                }
+            }
         }
 
         var doNotShowAgain = string.Equals(

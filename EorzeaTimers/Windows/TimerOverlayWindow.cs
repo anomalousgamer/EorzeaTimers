@@ -250,6 +250,11 @@ public sealed class TimerOverlayWindow : Window
 
     private void TryDock()
     {
+        if (detachedTimerId is not Guid timerId)
+        {
+            return;
+        }
+
         foreach (var other in Instances)
         {
             if (other == this || !other.visibleThisFrame || other.lastSize.X <= 0f)
@@ -267,7 +272,7 @@ public sealed class TimerOverlayWindow : Window
                 continue;
             }
 
-            var timer = plugin.Configuration.Timers.Find(t => t.Id == detachedTimerId.Value);
+            var timer = plugin.Configuration.Timers.Find(t => t.Id == timerId);
             if (timer is null)
             {
                 return;
@@ -283,116 +288,101 @@ public sealed class TimerOverlayWindow : Window
     private void DrawTimerRow(TimerEntry timer)
     {
         var configuration = plugin.Configuration;
-        var showGeneratedNote =
-            timer.ShowNotesInOverlay
+        var showGeneratedNote = timer.ShowNotesInOverlay
             && timer.SourceType == TimerSourceType.GameLinked
             && !string.IsNullOrWhiteSpace(timer.LinkedGeneratedNote);
-        var showCustomNote =
-            timer.ShowNotesInOverlay && !string.IsNullOrWhiteSpace(timer.Notes);
-        var noteLineCount = (showGeneratedNote ? 1 : 0) + (showCustomNote ? 1 : 0);
+        var showCustomNote = timer.ShowNotesInOverlay && !string.IsNullOrWhiteSpace(timer.Notes);
         var remainingText = TimerAppearance.FormatTimer(timer);
         var rowStart = ImGui.GetCursorPos();
         var globalScale = ImGuiHelpers.GlobalScale;
+        var normalScale = Math.Clamp(configuration.OverlayScale, 0.75f, 2f);
         var lineHeight = ImGui.GetTextLineHeight();
         var padding = ImGui.GetStyle().FramePadding;
-        var rowHeight = lineHeight
-            + noteLineCount * lineHeight * 0.82f
-            + padding.Y * (noteLineCount > 0 ? 3f : 2f);
+        var horizontalPadding = 8f * globalScale;
+        var iconWidth = 24f * globalScale;
         var rowWidth = MathF.Max(1f, ImGui.GetContentRegionAvail().X);
+        var textStartX = rowStart.X + horizontalPadding + iconWidth;
+        var contentRight = rowStart.X + rowWidth - horizontalPadding;
+        var textWidth = MathF.Max(1, contentRight - textStartX);
+        var linkWidth = timer.SourceType == TimerSourceType.GameLinked ? 20f * globalScale : 0f;
+        var remainingWidth = ImGui.CalcTextSize(remainingText).X;
+        var inlineCountdown = ImGui.CalcTextSize(timer.Name).X + linkWidth
+            + remainingWidth + 12f * globalScale <= textWidth;
+        var nameWidth = MathF.Max(1, textWidth - linkWidth
+            - (inlineCountdown ? remainingWidth + 12f * globalScale : 0));
+        var nameHeight = MathF.Max(lineHeight, ImGui.CalcTextSize(timer.Name, false, nameWidth).Y);
+        var countdownHeight = MathF.Max(lineHeight, ImGui.CalcTextSize(remainingText, false, textWidth).Y);
+        var headerHeight = inlineCountdown ? nameHeight : nameHeight + padding.Y * 0.5f + countdownHeight;
 
-        ImGui.InvisibleButton(
-            $"##OverlayTimer_{timer.Id}",
-            new Vector2(rowWidth, rowHeight));
+        ImGui.SetWindowFontScale(normalScale * 0.82f);
+        var generatedHeight = showGeneratedNote ? ImGui.CalcTextSize(timer.LinkedGeneratedNote, false, textWidth).Y : 0;
+        var customHeight = showCustomNote ? ImGui.CalcTextSize(timer.Notes, false, textWidth).Y : 0;
+        ImGui.SetWindowFontScale(normalScale);
+        var notesHeight = generatedHeight + customHeight;
+        if (showGeneratedNote && showCustomNote) notesHeight += padding.Y * 0.5f;
+        var rowHeight = headerHeight + notesHeight + padding.Y * 2f
+            + (notesHeight > 0 ? padding.Y * 0.5f : 0);
 
+        ImGui.InvisibleButton($"##OverlayTimer_{timer.Id}", new Vector2(rowWidth, rowHeight));
         HandleRowInteraction(timer.Id);
-
         var rowEnd = ImGui.GetCursorPos();
         var rowMinimum = ImGui.GetItemRectMin();
         var rowMaximum = ImGui.GetItemRectMax();
         var drawList = ImGui.GetWindowDrawList();
         var iconColor = TimerAppearance.GetColor(timer.Color);
-        var horizontalPadding = 8f * globalScale;
-        var iconWidth = 24f * globalScale;
-
         if (ImGui.IsItemHovered() && !configuration.OverlayClickThrough)
-        {
-            drawList.AddRectFilled(
-                rowMinimum,
-                rowMaximum,
-                ImGui.GetColorU32(new Vector4(0.12f, 0.28f, 0.50f, 0.42f)),
-                4f * globalScale);
-        }
-
+            drawList.AddRectFilled(rowMinimum, rowMaximum,
+                ImGui.GetColorU32(new Vector4(0.12f, 0.28f, 0.50f, 0.42f)), 4f * globalScale);
         if (timer.EndUnixSeconds <= DateTimeOffset.UtcNow.ToUnixTimeSeconds())
         {
             var pulse = (MathF.Sin((float)ImGui.GetTime() * 2.5f) + 1f) * 0.5f;
             var pulseColor = new Vector4(1f, 0.63f, 0.22f, 0.24f + pulse * 0.38f);
-            drawList.AddRect(
-                rowMinimum,
-                rowMaximum,
-                ImGui.GetColorU32(pulseColor),
-                4f * globalScale,
-                ImDrawFlags.None,
-                2f * globalScale);
+            drawList.AddRect(rowMinimum, rowMaximum, ImGui.GetColorU32(pulseColor),
+                4f * globalScale, ImDrawFlags.None, 2f * globalScale);
         }
-
-        ImGui.SetCursorPos(rowStart + new Vector2(horizontalPadding, padding.Y));
-        using (Plugin.PluginInterface.UiBuilder.IconFontFixedWidthHandle.Push())
-        {
-            ImGui.TextColored(iconColor, TimerAppearance.GetIconGlyph(timer.Icon));
-        }
-
-        var textStartX = rowStart.X + horizontalPadding + iconWidth;
         var nameY = rowStart.Y + padding.Y;
+        ImGui.SetCursorPos(new Vector2(rowStart.X + horizontalPadding, nameY));
+        using (Plugin.PluginInterface.UiBuilder.IconFontFixedWidthHandle.Push())
+            ImGui.TextColored(iconColor, TimerAppearance.GetIconGlyph(timer.Icon));
+
         ImGui.SetCursorPos(new Vector2(textStartX, nameY));
+        ImGui.PushTextWrapPos(textStartX + nameWidth);
         ImGui.TextColored(iconColor, timer.Name);
-
-        var remainingWidth = ImGui.CalcTextSize(remainingText).X;
-        var contentRight = ImGui.GetWindowContentRegionMax().X;
-        var remainingX = MathF.Max(
-            textStartX + 60f * globalScale,
-            contentRight - remainingWidth - horizontalPadding);
-
-        if (timer.SourceType == TimerSourceType.GameLinked)
+        ImGui.PopTextWrapPos();
+        if (linkWidth > 0)
         {
-            var linkX = textStartX
-                + ImGui.CalcTextSize(timer.Name).X
-                + 6f * globalScale;
-            if (linkX + 14f * globalScale < remainingX)
-            {
-                ImGui.SetCursorPos(new Vector2(linkX, nameY));
-                using (Plugin.PluginInterface.UiBuilder.IconFontFixedWidthHandle.Push())
-                {
-                    ImGui.TextDisabled("\uf0c1");
-                }
-            }
+            var linkX = inlineCountdown
+                ? textStartX + ImGui.CalcTextSize(timer.Name).X + 6f * globalScale
+                : contentRight - linkWidth + 4f * globalScale;
+            ImGui.SetCursorPos(new Vector2(linkX, nameY));
+            using (Plugin.PluginInterface.UiBuilder.IconFontFixedWidthHandle.Push())
+                ImGui.TextDisabled("\uf0c1");
         }
-
-        ImGui.SetCursorPos(new Vector2(remainingX, nameY));
+        var remainingX = MathF.Max(textStartX, contentRight - remainingWidth);
+        var remainingY = inlineCountdown ? nameY : nameY + nameHeight + padding.Y * 0.5f;
+        ImGui.SetCursorPos(new Vector2(remainingX, remainingY));
+        ImGui.PushTextWrapPos(contentRight);
         ImGui.TextColored(new Vector4(0.95f, 0.88f, 0.70f, 1f), remainingText);
-
-        if (noteLineCount > 0)
+        ImGui.PopTextWrapPos();
+        if (notesHeight > 0)
         {
-            var normalScale = Math.Clamp(configuration.OverlayScale, 0.75f, 2f);
             ImGui.SetWindowFontScale(normalScale * 0.82f);
-
-            var noteY = nameY + lineHeight + padding.Y * 0.5f;
+            var noteY = nameY + headerHeight + padding.Y * 0.5f;
+            ImGui.PushTextWrapPos(contentRight);
             if (showGeneratedNote)
             {
                 ImGui.SetCursorPos(new Vector2(textStartX, noteY));
                 ImGui.TextDisabled(timer.LinkedGeneratedNote);
-                noteY += lineHeight * 0.82f;
+                noteY += generatedHeight + padding.Y * 0.5f;
             }
-
             if (showCustomNote)
             {
                 ImGui.SetCursorPos(new Vector2(textStartX, noteY));
                 ImGui.TextDisabled(timer.Notes);
             }
-
+            ImGui.PopTextWrapPos();
             ImGui.SetWindowFontScale(normalScale);
         }
-
         ImGui.SetCursorPos(rowEnd);
     }
 
@@ -450,7 +440,7 @@ public sealed class TimerOverlayWindow : Window
 
         if (canInteract && timerId.HasValue && ImGui.IsItemHovered())
         {
-            ImGui.SetTooltip(
+            TextLayout.TooltipWrapped(
                 "Left-click to edit. Right-click to show or hide notes. Drag to move.");
         }
     }
@@ -524,7 +514,7 @@ public sealed class TimerOverlayWindow : Window
 
         if (hovered)
         {
-            ImGui.SetTooltip("Drag to resize overlay width");
+            TextLayout.TooltipWrapped("Drag to resize overlay width");
         }
     }
 

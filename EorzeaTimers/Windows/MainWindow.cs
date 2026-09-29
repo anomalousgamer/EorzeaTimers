@@ -187,7 +187,7 @@ public sealed class MainWindow : Window
             {
                 if (plugin.Configuration.Timers.Count == 0)
                 {
-                    ImGui.TextDisabled("No timer has been created yet.");
+                    TextLayout.DisabledWrapped("No timer has been created yet.");
                 }
                 else
                 {
@@ -354,7 +354,7 @@ public sealed class MainWindow : Window
 
         if (!available && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
         {
-            ImGui.SetTooltip(GameLinkedTimers.GetUnavailableMessage(definition.Source));
+            TextLayout.TooltipWrapped(GameLinkedTimers.GetUnavailableMessage(definition.Source));
         }
 
         ImGui.SameLine();
@@ -366,9 +366,11 @@ public sealed class MainWindow : Window
         }
 
         ImGui.SameLine();
-        ImGui.TextUnformatted(definition.Name);
-        ImGui.SameLine();
-        ImGui.TextDisabled($"- {definition.Description}");
+        ImGui.TextWrapped(definition.Name);
+        ImGui.Indent(buttonWidth + ImGui.GetStyle().ItemSpacing.X);
+        TextLayout.DisabledWrapped(definition.Description);
+        ImGui.Unindent(buttonWidth + ImGui.GetStyle().ItemSpacing.X);
+        ImGui.Spacing();
     }
 
     private void DrawTimerGroup(string label, Func<TimerEntry, bool> predicate)
@@ -392,9 +394,16 @@ public sealed class MainWindow : Window
     private void DrawTimerRow(TimerEntry timer)
     {
         var selected = !isCreatingNew && selectedTimerId == timer.Id;
-        var rowHeight = 58f * ImGuiHelpers.GlobalScale;
+        var scale = ImGuiHelpers.GlobalScale;
         var rowWidth = MathF.Max(1f, ImGui.GetContentRegionAvail().X);
         var rowStart = ImGui.GetCursorPos();
+        var linked = timer.SourceType == TimerSourceType.GameLinked;
+        var textWidth = MathF.Max(1, rowWidth - 48f * scale);
+        var nameWidth = MathF.Max(1, textWidth - (linked ? 22f * scale : 0));
+        var nameHeight = ImGui.CalcTextSize(timer.Name, false, nameWidth).Y;
+        var countdown = TimerAppearance.FormatTimer(timer);
+        var countdownHeight = ImGui.CalcTextSize(countdown, false, textWidth).Y;
+        var rowHeight = MathF.Max(58f * scale, nameHeight + countdownHeight + 22f * scale);
 
         if (selected)
         {
@@ -418,7 +427,6 @@ public sealed class MainWindow : Window
         }
 
         var rowEnd = ImGui.GetCursorPos();
-        var scale = ImGuiHelpers.GlobalScale;
         var color = TimerAppearance.GetColor(timer.Color);
 
         ImGui.SetCursorPos(rowStart + new Vector2(10f * scale, 8f * scale));
@@ -428,14 +436,13 @@ public sealed class MainWindow : Window
         }
 
         ImGui.SetCursorPos(rowStart + new Vector2(38f * scale, 6f * scale));
+        ImGui.PushTextWrapPos(rowStart.X + 38f * scale + nameWidth);
         ImGui.TextColored(color, timer.Name);
+        ImGui.PopTextWrapPos();
 
         if (timer.SourceType == TimerSourceType.GameLinked)
         {
-            var linkX = rowStart.X
-                + 38f * scale
-                + ImGui.CalcTextSize(timer.Name).X
-                + 7f * scale;
+            var linkX = rowStart.X + rowWidth - 26f * scale;
             ImGui.SetCursorPos(new Vector2(linkX, rowStart.Y + 6f * scale));
             using (Plugin.PluginInterface.UiBuilder.IconFontFixedWidthHandle.Push())
             {
@@ -444,15 +451,17 @@ public sealed class MainWindow : Window
 
             if (ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip(
+                TextLayout.TooltipWrapped(
                     timer.LinkedSourceAvailable
                         ? $"Game-linked: {timer.LinkedGeneratedNote}"
                         : $"Game-linked source unavailable: {timer.LinkedGeneratedNote}");
             }
         }
 
-        ImGui.SetCursorPos(rowStart + new Vector2(38f * scale, 30f * scale));
-        ImGui.TextDisabled(TimerAppearance.FormatTimer(timer));
+        ImGui.SetCursorPos(rowStart + new Vector2(38f * scale, nameHeight + 12f * scale));
+        ImGui.PushTextWrapPos(rowStart.X + 38f * scale + textWidth);
+        ImGui.TextDisabled(countdown);
+        ImGui.PopTextWrapPos();
 
         ImGui.SetCursorPos(rowEnd);
     }
@@ -473,9 +482,9 @@ public sealed class MainWindow : Window
         ImGui.Separator();
         ImGui.Spacing();
 
-        var footerHeight =
-            ImGui.GetFrameHeightWithSpacing()
-            + ImGui.GetTextLineHeightWithSpacing()
+        var footerHeight = ImGui.GetFrameHeightWithSpacing()
+            + ImGui.CalcTextSize(GetEditorStatusText(), false, MathF.Max(1, ImGui.GetContentRegionAvail().X)).Y
+            + ImGui.GetStyle().ItemSpacing.Y
             + 14f * ImGuiHelpers.GlobalScale;
 
         using (var form = ImRaii.Child(
@@ -506,16 +515,14 @@ public sealed class MainWindow : Window
             validationMessage = string.Empty;
         }
 
-        ImGui.SameLine();
-        ImGui.TextDisabled("Disabled timers remain saved and are shown as disabled.");
+        TextLayout.DisabledWrapped("Disabled timers remain saved and are shown as disabled.");
 
         if (ImGui.Checkbox("Show in overlay", ref editShowInOverlay))
         {
             validationMessage = string.Empty;
         }
 
-        ImGui.SameLine();
-        ImGui.TextDisabled("The timer keeps counting when hidden from the overlay.");
+        TextLayout.DisabledWrapped("The timer keeps counting when hidden from the overlay.");
 
         if (editShowInOverlay && ImGui.Checkbox("Undock from main overlay", ref editOverlayDetached))
         {
@@ -527,8 +534,7 @@ public sealed class MainWindow : Window
             validationMessage = string.Empty;
         }
 
-        ImGui.SameLine();
-        ImGui.TextDisabled("Shows custom notes and generated linked details. Right-click also toggles it.");
+        TextLayout.DisabledWrapped("Shows custom notes and generated linked details. Right-click also toggles it.");
         ImGui.Spacing();
 
         if (editSourceType == TimerSourceType.Manual)
@@ -566,7 +572,7 @@ public sealed class MainWindow : Window
         DrawNotesInput();
 
         ImGui.Spacing();
-        ImGui.TextDisabled("Active timers can also be shown in the persistent overlay.");
+        TextLayout.DisabledWrapped("Active timers can also be shown in the persistent overlay.");
     }
 
     private void DrawSourceInputs()
@@ -576,7 +582,7 @@ public sealed class MainWindow : Window
 
         if (editSourceType == TimerSourceType.Manual)
         {
-            ImGui.TextDisabled("Manual - its target is controlled by the settings below.");
+            TextLayout.DisabledWrapped("Manual - its target is controlled by the settings below.");
             return;
         }
 
@@ -595,24 +601,24 @@ public sealed class MainWindow : Window
 
         if (sourceAvailable)
         {
-            ImGui.TextColored(
+            TextLayout.ColoredWrapped(
                 new Vector4(0.42f, 0.82f, 0.47f, 1f),
                 $"Linked: {snapshot.SourceName}");
-            ImGui.TextUnformatted($"Current target: {snapshot.PhaseName}");
-            ImGui.TextUnformatted($"Target time: {periodEnd:ddd, MMM d, yyyy h:mm tt}");
-            ImGui.TextDisabled(snapshot.GeneratedNote);
+            ImGui.TextWrapped($"Current target: {snapshot.PhaseName}");
+            ImGui.TextWrapped($"Target time: {periodEnd:ddd, MMM d, yyyy h:mm tt}");
+            TextLayout.DisabledWrapped(snapshot.GeneratedNote);
         }
         else
         {
-            ImGui.TextColored(
+            TextLayout.ColoredWrapped(
                 new Vector4(1f, 0.55f, 0.25f, 1f),
                 $"Linked: {GameLinkedTimers.GetSourceName(editGameSource)} (unavailable)");
             ImGui.TextWrapped(GameLinkedTimers.GetUnavailableMessage(editGameSource));
-            ImGui.TextDisabled(
+            TextLayout.DisabledWrapped(
                 "The last known target is preserved until the game supplies fresh data.");
         }
 
-        ImGui.TextDisabled(
+        TextLayout.DisabledWrapped(
             "The target updates automatically; appearance, notes, and alerts remain customizable.");
 
         if (ImGui.Button("Convert to Manual"))
@@ -650,13 +656,18 @@ public sealed class MainWindow : Window
         return true;
     }
 
+    private string GetEditorStatusText() => !string.IsNullOrWhiteSpace(validationMessage)
+        ? validationMessage
+        : isCreatingNew ? "Create the timer with Save, or discard it with Cancel."
+        : IsDraftDirty() ? "This timer has unsaved changes." : "No unsaved changes.";
+
     private void DrawEditorFooter()
     {
         var isDirty = IsDraftDirty();
         ImGui.Separator();
         if (!string.IsNullOrWhiteSpace(validationMessage))
         {
-            ImGui.TextColored(
+            TextLayout.ColoredWrapped(
                 validationIsError
                     ? new Vector4(1f, 0.35f, 0.3f, 1f)
                     : new Vector4(0.42f, 0.82f, 0.47f, 1f),
@@ -664,7 +675,7 @@ public sealed class MainWindow : Window
         }
         else
         {
-            ImGui.TextDisabled(
+            TextLayout.DisabledWrapped(
                 isCreatingNew
                     ? "Create the timer with Save, or discard it with Cancel."
                     : isDirty
@@ -846,10 +857,10 @@ public sealed class MainWindow : Window
                 DrawIntervalRepeatInputs();
                 break;
             case TimerRepeatMode.Daily:
-                ImGui.TextDisabled("Repeats every day at the timer's scheduled time.");
+                TextLayout.DisabledWrapped("Repeats every day at the timer's scheduled time.");
                 break;
             case TimerRepeatMode.Weekly:
-                ImGui.TextDisabled("Repeats every seven days on the same weekday and time.");
+                TextLayout.DisabledWrapped("Repeats every seven days on the same weekday and time.");
                 break;
             case TimerRepeatMode.SelectedWeekdays:
                 DrawWeekdayRepeatInputs();
@@ -885,14 +896,14 @@ public sealed class MainWindow : Window
             ImGui.EndCombo();
         }
 
-        ImGui.TextDisabled(
+        TextLayout.DisabledWrapped(
             editRepeatAnchor == TimerRepeatAnchor.OriginalSchedule
                 ? "Missed occurrences are skipped without changing the original schedule."
                 : "The next occurrence is calculated from the time the alert is dismissed.");
 
         if (TryCreateDraftSchedule(out var draftTimer))
         {
-            ImGui.TextDisabled(
+            TextLayout.DisabledWrapped(
                 $"Following occurrence: {TimerSchedule.FormatNextOccurrence(draftTimer, draftTimer.EndUnixSeconds)}");
         }
 
@@ -970,7 +981,7 @@ public sealed class MainWindow : Window
             editRepeatDayOfMonth = Math.Clamp(editRepeatDayOfMonth, 1, 31);
         }
 
-        ImGui.TextDisabled("Shorter months use their final day.");
+        TextLayout.DisabledWrapped("Shorter months use their final day.");
     }
 
     private void DrawNotesInput()
@@ -1029,7 +1040,7 @@ public sealed class MainWindow : Window
 
             if (ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip(TimerAppearance.GetIconName(icon));
+                TextLayout.TooltipWrapped(TimerAppearance.GetIconName(icon));
             }
 
             if (index < TimerAppearance.Icons.Length - 1)
@@ -1080,7 +1091,7 @@ public sealed class MainWindow : Window
 
             if (ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip(TimerAppearance.GetColorName(colorOption));
+                TextLayout.TooltipWrapped(TimerAppearance.GetColorName(colorOption));
             }
 
             if (index < TimerAppearance.Colors.Length - 1)
@@ -1175,14 +1186,14 @@ public sealed class MainWindow : Window
                 "%d%%");
 
             ImGui.SameLine();
-            ImGui.TextDisabled(
+            TextLayout.DisabledWrapped(
                 editAlertVolumePercent > 100
                     ? "Experimental boost"
                     : "Per timer");
 
             if (editAlertVolumePercent > 100 && ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip(
+                TextLayout.TooltipWrapped(
                     "FFXIV may clamp louder values or introduce distortion.");
             }
 
@@ -1222,8 +1233,7 @@ public sealed class MainWindow : Window
             }
         }
 
-        ImGui.SameLine();
-        ImGui.TextDisabled("Uses the current unsaved settings.");
+        TextLayout.DisabledWrapped("Uses the current unsaved settings.");
     }
 
     private void BeginNewTimer()

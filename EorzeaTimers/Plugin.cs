@@ -53,6 +53,9 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService]
     internal static INotificationManager NotificationManager { get; private set; } = null!;
 
+    [PluginService]
+    internal static IAddonLifecycle AddonLifecycle { get; private set; } = null!;
+
     internal Configuration Configuration { get; }
 
     private readonly WindowSystem windowSystem = new("EorzeaTimers");
@@ -61,6 +64,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly TimerOverlayWindow overlayWindow;
     private readonly OverlaySettingsWindow overlaySettingsWindow;
     private readonly CompletionAlertWindow completionAlertWindow;
+    private readonly VesselDiagnosticsWindow vesselDiagnosticsWindow;
     private readonly HashSet<Guid> completionAlertedTimerIds = new();
     private readonly Dictionary<Guid, TimerOverlayWindow> detachedOverlays = new();
     private readonly VesselDiagnostics vesselDiagnostics = new();
@@ -104,12 +108,14 @@ public sealed class Plugin : IDalamudPlugin
         overlayWindow = new TimerOverlayWindow(this);
         overlaySettingsWindow = new OverlaySettingsWindow(this, overlayWindow);
         completionAlertWindow = new CompletionAlertWindow(this);
+        vesselDiagnosticsWindow = new VesselDiagnosticsWindow(this, vesselDiagnostics);
 
         windowSystem.AddWindow(mainWindow);
         windowSystem.AddWindow(changelogWindow);
         windowSystem.AddWindow(overlayWindow);
         windowSystem.AddWindow(overlaySettingsWindow);
         windowSystem.AddWindow(completionAlertWindow);
+        windowSystem.AddWindow(vesselDiagnosticsWindow);
         SyncDetachedOverlays();
 
         changelogPendingAfterLogin =
@@ -144,6 +150,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.DisableUserUiHide = false;
         PluginInterface.UiBuilder.DisableCutsceneUiHide = false;
 
+        vesselDiagnostics.Dispose();
         CommandManager.RemoveHandler(CommandName);
         foreach (var overlay in detachedOverlays.Values)
         {
@@ -299,7 +306,7 @@ public sealed class Plugin : IDalamudPlugin
         ChatGui.Print("/etimers clickthrough off - Disables click-through.", ChatTag);
         ChatGui.Print("/etimers changes - Opens the changelog.", ChatTag);
         ChatGui.Print("/etimers checkupdates - Checks for an available plugin update.", ChatTag);
-        ChatGui.Print("/etimers vesselprobe on|off|now - Opt-in vessel diagnostics in Dalamud logs.", ChatTag);
+        ChatGui.Print("/etimers vesselprobe - Open the in-game vessel report. Optional: on, off, now.", ChatTag);
         ChatGui.Print("Game-linked timers", ChatTag);
         ChatGui.Print("Use + Linked Timer to browse the linked-timer catalog.", ChatTag);
         ChatGui.Print("Fixed schedules calculate locally; character timers read loaded game data.", ChatTag);
@@ -533,39 +540,39 @@ public sealed class Plugin : IDalamudPlugin
         changelogEligibleAtUtc = null;
     }
 
+    internal void SetVesselDiagnosticsEnabled(bool enabled)
+    {
+        Configuration.VesselDiagnosticsEnabled = enabled;
+        Configuration.Save();
+    }
+
     private void HandleVesselProbeCommand(string[] parts)
     {
+        vesselDiagnosticsWindow.IsOpen = true;
+        if (parts.Length == 1) return;
         if (parts.Length != 2)
         {
-            ChatGui.Print("Use /etimers vesselprobe on, off, or now.", ChatTag);
+            ChatGui.Print("Use /etimers vesselprobe, or add on, off, or now.", ChatTag);
             return;
         }
-
         switch (parts[1].ToLowerInvariant())
         {
             case "on":
-                Configuration.VesselDiagnosticsEnabled = true;
-                Configuration.Save();
-                ChatGui.Print("Vessel probe enabled. Log out and back in, then open Ctrl+U > Estate > Voyages and use /etimers vesselprobe now. Check Dalamud logs for [Vessel probe].", ChatTag);
+                SetVesselDiagnosticsEnabled(true);
+                ChatGui.Print("Capture enabled. Follow the test in the Vessel Report window, then use Stop & copy report.", ChatTag);
                 break;
             case "off":
-                Configuration.VesselDiagnosticsEnabled = false;
-                Configuration.Save();
-                ChatGui.Print("Vessel probe disabled.", ChatTag);
+                SetVesselDiagnosticsEnabled(false);
+                ChatGui.Print("Capture stopped. Your report is still available in the Vessel Report window.", ChatTag);
                 break;
             case "now":
                 if (Configuration.VesselDiagnosticsEnabled)
-                {
-                    VesselDiagnostics.Sample("manual probe");
-                    ChatGui.Print("Vessel state sampled. Look for [Vessel probe] in the Dalamud log.", ChatTag);
-                }
+                    vesselDiagnostics.RequestSnapshot("Manual command");
                 else
-                {
-                    ChatGui.Print("Enable the probe with /etimers vesselprobe on first.", ChatTag);
-                }
+                    ChatGui.Print("Enable capture in the Vessel Report window first.", ChatTag);
                 break;
             default:
-                ChatGui.Print("Use /etimers vesselprobe on, off, or now.", ChatTag);
+                ChatGui.Print("Use /etimers vesselprobe, or add on, off, or now.", ChatTag);
                 break;
         }
     }

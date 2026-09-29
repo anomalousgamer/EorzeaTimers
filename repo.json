@@ -5,7 +5,7 @@
     "Punchline": "Create and track personalized timers in FFXIV.",
     "Description": "Create persistent manual and game-linked countdown timers with configurable alerts, snooze controls, and an in-game overlay.",
     "InternalName": "EorzeaTimers",
-    "AssemblyVersion": "0.8.9.0",
+    "AssemblyVersion": "0.8.9.1",
     "RepoUrl": "https://github.com/anomalousgamer/EorzeaTimers",
     "ApplicableVersion": "any",
     "DalamudApiLevel": 15,
@@ -17,9 +17,9 @@
     "IsHide": false,
     "IsTestingExclusive": false,
     "DownloadCount": 0,
-    "LastUpdate": "1790381708",
-    "Changelog": "0.8.9.0 Preview: Overlay border colors; detachable timer overlays with drag-to-dock; plugin update notifications and /etimers checkupdates; opt-in read-only vessel diagnostics via /etimers vesselprobe. Automatic voyage creation awaits identification of the remote Estate data source.",
-    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.8.9.0/latest.zip",
-    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.8.9.0/latest.zip"
+    "LastUpdate": 1790530560,
+    "Changelog": "0.8.9.1 Preview: In-game vessel diagnostic report with copy/paste and labeled checkpoints; wrapped, scrolling changelog; wrapped descriptions, timer names and overlay notes. Includes all prior 0.9 preview overlay features and update notifications. Automatic per-vessel login synchronization remains under research.",
+    "DownloadLinkInstall": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.8.9.1/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/anomalousgamer/EorzeaTimers/releases/download/v0.8.9.1/latest.zip"
   }
 ]

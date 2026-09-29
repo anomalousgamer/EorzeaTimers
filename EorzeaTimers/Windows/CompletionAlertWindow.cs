@@ -124,7 +124,7 @@ public sealed class CompletionAlertWindow : Window
         }
 
         ImGui.SameLine();
-        ImGui.TextColored(alertColor, alert.Name);
+        TextLayout.ColoredWrapped(alertColor, alert.Name);
         ImGui.Indent(30f * scale);
         ImGui.TextWrapped(
             alert.IsTest
@@ -143,7 +143,7 @@ public sealed class CompletionAlertWindow : Window
         if (pendingAlerts.Count > 0)
         {
             ImGui.Spacing();
-            ImGui.TextDisabled(
+            TextLayout.DisabledWrapped(
                 pendingAlerts.Count == 1
                     ? "1 more completed timer is waiting."
                     : $"{pendingAlerts.Count} more completed timers are waiting.");
